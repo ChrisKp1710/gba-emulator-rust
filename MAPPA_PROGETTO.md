@@ -4,18 +4,22 @@
 
 > **Vuoi modificare...? → Vai in questo file!**
 
-| Cosa Vuoi Fare                 | File da Modificare               | Riga Circa |
-| ------------------------------ | -------------------------------- | ---------- |
-| 🔧 Aggiungere istruzione ARM   | `gba-arm7tdmi/src/arm.rs`        | 20-40      |
-| 🔧 Aggiungere istruzione THUMB | `gba-arm7tdmi/src/thumb.rs`      | 5-25       |
-| 🔧 Modificare registri CPU     | `gba-arm7tdmi/src/registers.rs`  | 50-150     |
-| 🔧 Cambiare logica CPU         | `gba-arm7tdmi/src/cpu.rs`        | 30-100     |
-| 💾 Modificare memoria/RAM      | `gba-core/src/memory.rs`         | 30-250     |
-| 🎨 Modificare grafica/PPU      | `gba-core/src/ppu.rs`            | 10-60      |
-| ⚡ Modificare interrupt        | `gba-core/src/interrupt.rs`      | 15-70      |
-| 📂 Modificare caricamento ROM  | `gba-core/src/cartridge.rs`      | 30-80      |
-| 🎮 Modificare interfaccia      | `gba-frontend-sdl2/src/ui.rs`    | 15-120     |
-| ⌨️ Modificare input/controlli  | `gba-frontend-sdl2/src/input.rs` | 10-50      |
+| Cosa Vuoi Fare                    | File da Modificare                            | Stato        | Righe |
+| --------------------------------- | --------------------------------------------- | ------------ | ----- |
+| ✅ Aggiungere istruzione ARM      | `gba-arm7tdmi/src/arm.rs`                     | **Completo** | 249   |
+| ✅ Implementazione ALU ARM        | `gba-arm7tdmi/src/instructions/alu.rs`        | **Completo** | 314   |
+| ✅ Branch ARM (B, BL, BX)         | `gba-arm7tdmi/src/instructions/branch.rs`     | **Completo** | 66    |
+| ✅ Load/Store ARM                 | `gba-arm7tdmi/src/instructions/load_store.rs` | **Completo** | 173   |
+| ✅ Aggiungere istruzione THUMB    | `gba-arm7tdmi/src/thumb.rs`                   | **Completo** | 350+  |
+| ✅ Esecuzione THUMB               | `gba-arm7tdmi/src/cpu.rs` (execute_thumb)     | **Completo** | 450+  |
+| ✅ Modificare registri CPU        | `gba-arm7tdmi/src/registers.rs`               | **Completo** | 381   |
+| ✅ Test CPU                       | `gba-arm7tdmi/src/cpu.rs` (mod tests)         | **10 test**  | 200+  |
+| 💾 Modificare memoria/RAM         | `gba-core/src/memory.rs`                      | Completo     | 250   |
+| 🎨 **Implementare rendering PPU** | `gba-core/src/ppu.rs`                         | **TODO**     | 60    |
+| ⚡ Modificare interrupt           | `gba-core/src/interrupt.rs`                   | Completo     | 70    |
+| 📂 Modificare caricamento ROM     | `gba-core/src/cartridge.rs`                   | Completo     | 80    |
+| 🎮 Modificare interfaccia         | `gba-frontend-sdl2/src/ui.rs`                 | Completo     | 120   |
+| ⌨️ **Collegare input**            | `gba-frontend-sdl2/src/input.rs`              | **TODO**     | 50    |
 
 ---
 

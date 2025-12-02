@@ -5,6 +5,87 @@ Tutte le modifiche notevoli a questo progetto saranno documentate in questo file
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce a [Semantic Versioning](https://semver.org/lang/it/).
 
+## [0.2.0] - 2024-12-02
+
+### ✅ Completato - CPU ARM7TDMI Funzionante
+
+#### Istruzioni ARM (32-bit)
+
+- ✅ **Decoder ARM completo** in `arm.rs`:
+  - Data Processing (16 operazioni: AND, EOR, SUB, RSB, ADD, ADC, SBC, RSC, TST, TEQ, CMP, CMN, ORR, MOV, BIC, MVN)
+  - Branch and Branch with Link (B, BL)
+  - Branch and Exchange (BX) - switch ARM↔THUMB
+  - Single Data Transfer (LDR, STR, LDRB, STRB)
+  - Block Data Transfer (LDM, STM)
+  - Multiply (MUL, MLA)
+  - Software Interrupt (SWI)
+- ✅ **Implementazioni complete**:
+  - `instructions/alu.rs` (314 righe) - Tutte le operazioni ALU con barrel shifter
+  - `instructions/branch.rs` (66 righe) - B, BL, BX
+  - `instructions/load_store.rs` (173 righe) - LDR/STR singolo e multiplo
+- ✅ **Condition codes**: Tutte le 15 condizioni (EQ, NE, CS, CC, MI, PL, VS, VC, HI, LS, GE, LT, GT, LE, AL)
+- ✅ **Barrel shifter**: LSL, LSR, ASR, ROR con carry out corretto
+- ✅ **Flag NZCV**: Gestione completa flag Negative, Zero, Carry, Overflow
+
+#### Istruzioni THUMB (16-bit)
+
+- ✅ **Decoder THUMB completo** in `thumb.rs` (350+ righe):
+  - Tutti i 19 formati THUMB decodificati
+  - 100+ varianti di istruzioni supportate
+- ✅ **Esecuzione THUMB** in `cpu.rs` (450+ righe):
+  - Format 1: Move shifted register (LSL, LSR, ASR)
+  - Format 2: Add/subtract (ADD, SUB con registro o immediato)
+  - Format 3: Move/compare/add/subtract immediate (MOV, CMP, ADD, SUB)
+  - Format 4: ALU operations (16 operazioni complete)
+  - Format 5: Hi register operations/BX (R8-R15)
+  - Format 6: PC-relative load
+  - Format 7-8: Load/store register offset e sign-extended
+  - Format 9-10: Load/store immediate offset e halfword
+  - Format 11: SP-relative load/store
+  - Format 12-13: Load address e add offset to SP
+  - Format 14-15: Push/pop registers e multiple load/store
+  - Format 16: Conditional branch
+  - Format 17: Software interrupt
+  - Format 18: Unconditional branch
+  - Format 19: Long branch with link (BL)
+
+#### Testing
+
+- ✅ **10 test unitari** che verificano correttezza:
+  - **ARM**: MOV, ADD, Branch, LDR/STR
+  - **THUMB**: MOV immediato, ADD registri, LDR/STR, Branch
+- ✅ Tutti i test passano con successo
+- ✅ Compilazione release senza errori
+
+#### Miglioramenti Registri
+
+- ✅ Metodi setter per flag: `set_flag_n()`, `set_flag_z()`, `set_flag_c()`, `set_flag_v()`
+- ✅ Metodo `set_thumb()` per switch ARM/THUMB mode
+- ✅ Accesso diretto CPSR per condition checks
+
+### Aggiunte Documentazione
+
+- 📚 **MAPPA_PROGETTO.md** - Guida visuale navigazione codice
+- 📚 **GUIDA_ARCHITETTURA.md** - Architettura step-by-step dettagliata
+- 📚 Commenti inline estesi in tutti i file principali
+
+### Note Tecniche v0.2.0
+
+- **Righe codice CPU**: ~1.600 righe funzionanti
+- **Istruzioni supportate**: 60+ ARM + 100+ varianti THUMB
+- **Performance test**: Tutti passano in <1 secondo
+- **Compatibilità**: Il codice GBA reale può ora essere eseguito dalla CPU!
+
+### ⚠️ Limitazioni Correnti
+
+- PPU rendering non implementato (solo timing)
+- Input controller da collegare
+- APU non implementato
+- Save states non implementati
+- Nessun gioco ancora completamente giocabile (manca grafica)
+
+---
+
 ## [0.1.0] - 2024-12-02
 
 ### Aggiunto

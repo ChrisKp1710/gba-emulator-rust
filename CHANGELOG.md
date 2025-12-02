@@ -5,6 +5,29 @@ Tutte le modifiche notevoli a questo progetto saranno documentate in questo file
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce a [Semantic Versioning](https://semver.org/lang/it/).
 
+## [0.3.1] - 2024-12-02
+
+### ✅ Code Quality - Pulizia Professionale
+
+#### Refactoring e Ottimizzazioni
+
+- **✅ 0 Warning Clippy** - Codice completamente pulito:
+  - Rifattorizzate funzioni con troppi argomenti usando struct:
+    - `SingleDataTransferParams` per LDR/STR
+    - `BlockDataTransferParams` per LDM/STM
+  - Rimossi cast non necessari
+  - Usato `Range::contains()` invece di controlli manuali
+  - Operatori di assegnazione composti (`<<=` vs `= <<`)
+  - `assert!()` invece di `assert_eq!()` con booleani
+  - Rimossi campi inutilizzati
+  - Pattern range ottimizzati
+
+#### Test e Validazione
+
+- **✅ 14/14 test passano** in modalità release
+- **✅ Clippy strict mode** (`-D warnings`) senza errori
+- **✅ Codice professionale** seguendo Rust best practices
+
 ## [0.3.0] - 2024-12-02
 
 ### ✅ Completato - Graphics & Input

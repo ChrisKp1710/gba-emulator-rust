@@ -21,19 +21,20 @@ use crate::registers::Registers;
 /// Numero di cicli usati (2S+1N = 3 cicli)
 pub fn execute_branch(regs: &mut Registers, offset: i32, link: bool) -> u32 {
     let pc = regs.pc();
-    
+
     // Se BL, salva indirizzo ritorno in LR (R14)
     if link {
         regs.r[14] = pc.wrapping_sub(4); // PC-4 = istruzione dopo BL
     }
-    
+
     // Calcola nuovo PC: PC corrente è già +8 (prefetch)
     // quindi sommiamo l'offset a PC che è già avanzato
     let new_pc = (pc as i32).wrapping_add(offset) as u32;
     regs.set_pc(new_pc & !3); // Allinea a 4 byte (ARM mode)
-    
+
     3 // Branch costa 2S+1N = 3 cicli
-}/// Esegue un Branch and Exchange (BX)
+}
+/// Esegue un Branch and Exchange (BX)
 ///
 /// Salta all'indirizzo in Rn e switch tra ARM/THUMB mode
 /// in base al bit 0 di Rn:

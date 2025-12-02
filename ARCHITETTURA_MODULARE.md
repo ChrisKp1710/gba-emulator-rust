@@ -1,8 +1,8 @@
 # Architettura Modulare - GBA Emulator
 
-**Versione:** v0.8.0 (BIOS completo) 🎯  
+**Versione:** v0.9.0 (Save System completo) 💾  
 **Data:** 2 dicembre 2025  
-**Test Suite:** 96/96 passano ✅
+**Test Suite:** 141/141 passano ✅
 
 ## 📐 Principi di Design
 
@@ -15,7 +15,7 @@ Il progetto segue questi principi fondamentali:
 
 ## 🏗️ Struttura del Progetto
 
-```
+````
 gba-emulator-rust/
 ├── gba-arm7tdmi/          # CPU ARM7TDMI
 │   ├── src/
@@ -65,14 +65,25 @@ gba-emulator-rust/
 │   │   │   ├── calls.rs       # (209 lines) - BIOS functions
 │   │   │   └── mod.rs         # (89 lines) - BIOS handler
 │   │   │
+│   │   ├── save_impl/     # Save System modularizzato
+│   │   │   ├── constants.rs   # (48 lines) - Save detection strings
+│   │   │   ├── types.rs       # (89 lines) - SaveType, FlashState
+│   │   │   ├── detection.rs   # (82 lines) - Auto-detection
+│   │   │   ├── sram.rs        # (67 lines) - SRAM logic
+│   │   │   ├── flash.rs       # (189 lines) - Flash state machine
+│   │   │   ├── eeprom.rs      # (150 lines) - EEPROM protocol
+│   │   │   └── mod.rs         # (233 lines) - SaveController
+│   │   │
 │   │   ├── ppu.rs         # (2 lines) - Re-export PPU
 │   │   ├── apu.rs         # (2 lines) - Re-export APU
 │   │   ├── timer.rs       # (2 lines) - Re-export Timer
 │   │   ├── dma.rs         # (2 lines) - Re-export DMA
 │   │   ├── bios.rs        # (2 lines) - Re-export BIOS
+│   │   ├── save.rs        # (2 lines) - Re-export Save
 │   │   ├── timer_tests.rs # (194 lines) - Timer tests
 │   │   ├── dma_tests.rs   # (300 lines) - DMA tests
 │   │   ├── bios_tests.rs  # (167 lines) - BIOS tests
+│   │   ├── save_tests.rs  # (283 lines) - Save tests
 │   │   ├── bus.rs         # (290 lines) - System bus
 │   │   ├── memory.rs      # (310 lines) - Memory system
 │   │   ├── interrupt.rs   # (85 lines) - Interrupts
@@ -84,19 +95,20 @@ gba-emulator-rust/
 │       └── ppu_visual_test.rs # Visual demos
 │
 ├── gba-frontend-sdl2/     # Frontend grafico
-│   ├── src/
-│   │   └── main.rs
-│   └── Cargo.toml
-│
-└── Cargo.toml             # Workspace root
-```
-
-## 📊 Metriche del Codice
-
-### Per Componente
-
 | Componente | Moduli    | Righe Codice | Righe Test | Test | Status      |
 | ---------- | --------- | ------------ | ---------- | ---- | ----------- |
+| **CPU**    | 1 + tests | 781          | 426        | 10   | ✅ Completo |
+| **PPU**    | 6 + tests | 752          | in ppu.rs  | 12   | ✅ Completo |
+| **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
+| **Timer**  | 4 + tests | 231          | 194        | 13   | ✅ Completo |
+| **DMA**    | 4 + tests | 383          | 300        | 19   | ✅ Completo |
+| **BIOS**   | 3 + tests | 337          | 167        | 21   | ✅ Completo |
+| **Save**   | 6 + tests | 858          | 283        | 23   | ✅ Completo |
+| **Bus**    | 1         | 290          | -          | 0    | ✅ Stabile  |
+| **Memory** | 1         | 310          | -          | 0    | ✅ Stabile  |
+| **Input**  | 1         | 120          | -          | 0    | ✅ Completo |
+
+**Totale Test Suite: 141 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual)
 | **CPU**    | 1 + tests | 781          | 426        | 10   | ✅ Completo |
 | **PPU**    | 6 + tests | 752          | in ppu.rs  | 12   | ✅ Completo |
 | **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
@@ -147,7 +159,7 @@ component.rs        // pub use component_impl::*;
 
 // Test separati
 component_tests.rs  // #[cfg(test)] mod in lib.rs
-```
+````
 
 **Esempio PPU:**
 

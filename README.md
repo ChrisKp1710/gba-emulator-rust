@@ -315,11 +315,19 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ Memory operations (CpuSet, CpuFastSet)
    - ✅ Decompression (LZ77, RLE)
    - ✅ Test separati: 21 test unitari
-7. **Input controller completo**
+7. **Save System completo** 💾
+   - ✅ Architettura modulare (6 moduli in save_impl/)
+   - ✅ Auto-detection da ROM (SRAM_V, FLASH_V, EEPROM_V)
+   - ✅ SRAM (32-64KB), Flash (64-128KB), EEPROM (512B-8KB)
+   - ✅ State machine Flash con chip ID e sector erase
+   - ✅ Protocollo seriale EEPROM via DMA
+   - ✅ File persistence (.sav) con auto-save
+   - ✅ Test separati: 23 test unitari
+8. **Input controller completo**
    - ✅ KEYINPUT register
    - ✅ D-Pad + A/B/L/R/Start/Select
    - ✅ SDL2 integration
-8. **Sistema base completo**
+9. **Sistema base completo**
    - ✅ Memoria e bus
    - ✅ Interrupt controller
    - ✅ Caricamento ROM
@@ -327,28 +335,30 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 
 ### 🚧 In Corso
 
-- **PPU Advanced Features**
-  - [ ] Mode 1-2 (affine backgrounds)
-  - [ ] Mode 4-5 (bitmap paletted)
-  - [ ] Window effects
-  - [ ] Blending avanzato (alpha, brightness)
+- **PPU Mode 4/5 - Bitmap Paletted** 🎯 **PROSSIMO**
+  - [ ] Mode 4: 256 colori paletted (240x160)
+  - [ ] Mode 5: 16-bit RGB (160x128)
+  - [ ] Frame flipping per double buffering
 
 ### 📋 Pianificato
 
-1. **Periferiche Avanzate**
+1. **PPU Advanced Features**
+
+   - [ ] Mode 1-2 (affine backgrounds)
+   - [ ] Window effects (WIN0/WIN1/OBJ/OUT)
+   - [ ] Blending avanzato (alpha, brightness)
+
+2. **Periferiche Avanzate**
 
    - [ ] Serial communication
    - [ ] RTC (Real Time Clock)
    - [ ] GPIO per accessori
 
-2. **Salvataggi**
+3. **Altri Features**
 
    - [ ] Save States
-   - [ ] SRAM
-   - [ ] Flash
-   - [ ] EEPROM
 
-3. **Ottimizzazioni**
+4. **Ottimizzazioni**
    - [ ] JIT compilation (opzionale)
    - [ ] SIMD optimizations
    - [ ] Multi-threading
@@ -386,11 +396,14 @@ cargo test --package gba-core dma
 # Test BIOS (21 test unitari)
 cargo test --package gba-core bios
 
+# Test Save System (23 test unitari)
+cargo test --package gba-core save
+
 # Test integrazione (4 test)
 cargo test --package gba-core --test
 ```
 
-### Test Suite - 96/96 Passano ✅
+### Test Suite - 141/141 Passano ✅
 
 **CPU ARM7TDMI (10 test)** - `cpu_tests.rs`
 
@@ -538,6 +551,50 @@ _Core Features (6 test):_
 - ✅ `test_cpuset_flags` - CpuSet flags
 - ✅ `test_soft_reset_no_panic` - SoftReset
 - ✅ `test_bios_unknown_swi` - Unknown SWI handling
+
+**Save System (23 test)** - `save_tests.rs`
+
+_SaveType & Detection (9 test):_
+
+- ✅ `test_save_type_size` - SaveType sizes
+- ✅ `test_save_type_is_flash` - Flash detection
+- ✅ `test_save_type_is_eeprom` - EEPROM detection
+- ✅ `test_detect_sram` - SRAM_V detection
+- ✅ `test_detect_flash_64k` - FLASH_V 64KB
+- ✅ `test_detect_flash_128k` - FLASH1M_V 128KB
+- ✅ `test_detect_eeprom_512b` - EEPROM_V 512B
+- ✅ `test_detect_eeprom_8k` - EEPROM_V 8KB (ROM >16MB)
+- ✅ `test_detect_none` - No save type
+
+_SRAM (2 test):_
+
+- ✅ `test_sram_basic` - Read/write, wraparound
+- ✅ `test_sram_default_empty` - Default 0xFF
+
+_Flash (3 test):_
+
+- ✅ `test_flash_chip_id` - Chip ID mode
+- ✅ `test_flash_write_byte` - Byte write sequence
+- ✅ `test_flash_erase_sector` - 4KB sector erase
+- ✅ `test_flash_bank_switch` - 128KB bank switching
+
+_EEPROM (2 test):_
+
+- ✅ `test_eeprom_basic` - Read/write 64-bit blocks
+- ✅ `test_eeprom_8k` - 14-bit address mode
+
+_SaveController (4 test):_
+
+- ✅ `test_save_controller_no_save` - SaveType::None
+- ✅ `test_save_controller_detection` - Auto-detect from ROM
+- ✅ `test_save_controller_read_write` - Read/write operations
+- ✅ `test_save_controller_flash` - Flash controller
+
+_File Persistence (3 test):_
+
+- ✅ `test_save_file_persistence` - Save/load file
+- ✅ `test_flash_file_persistence` - Flash file persistence
+- ✅ `test_eeprom_file_persistence` - EEPROM file persistence
 
 **Integrazione (4 test)** - `tests/`
 

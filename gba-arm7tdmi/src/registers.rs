@@ -185,6 +185,16 @@ impl Registers {
         self.cpsr & StatusFlags::THUMB_STATE.bits() != 0
     }
 
+    /// Imposta stato THUMB
+    #[inline(always)]
+    pub fn set_thumb(&mut self, thumb: bool) {
+        if thumb {
+            self.cpsr |= StatusFlags::THUMB_STATE.bits();
+        } else {
+            self.cpsr &= !StatusFlags::THUMB_STATE.bits();
+        }
+    }
+
     /// Ottieni lo stato corrente della CPU
     #[inline(always)]
     pub fn cpu_state(&self) -> CpuState {
@@ -201,10 +211,30 @@ impl Registers {
         self.cpsr & StatusFlags::NEGATIVE.bits() != 0
     }
 
+    /// Imposta flag Negative
+    #[inline(always)]
+    pub fn set_flag_n(&mut self, value: bool) {
+        if value {
+            self.cpsr |= StatusFlags::NEGATIVE.bits();
+        } else {
+            self.cpsr &= !StatusFlags::NEGATIVE.bits();
+        }
+    }
+
     /// Verifica flag Zero
     #[inline(always)]
     pub fn flag_z(&self) -> bool {
         self.cpsr & StatusFlags::ZERO.bits() != 0
+    }
+
+    /// Imposta flag Zero
+    #[inline(always)]
+    pub fn set_flag_z(&mut self, value: bool) {
+        if value {
+            self.cpsr |= StatusFlags::ZERO.bits();
+        } else {
+            self.cpsr &= !StatusFlags::ZERO.bits();
+        }
     }
 
     /// Verifica flag Carry
@@ -213,10 +243,30 @@ impl Registers {
         self.cpsr & StatusFlags::CARRY.bits() != 0
     }
 
+    /// Imposta flag Carry
+    #[inline(always)]
+    pub fn set_flag_c(&mut self, value: bool) {
+        if value {
+            self.cpsr |= StatusFlags::CARRY.bits();
+        } else {
+            self.cpsr &= !StatusFlags::CARRY.bits();
+        }
+    }
+
     /// Verifica flag Overflow
     #[inline(always)]
     pub fn flag_v(&self) -> bool {
         self.cpsr & StatusFlags::OVERFLOW.bits() != 0
+    }
+
+    /// Imposta flag Overflow
+    #[inline(always)]
+    pub fn set_flag_v(&mut self, value: bool) {
+        if value {
+            self.cpsr |= StatusFlags::OVERFLOW.bits();
+        } else {
+            self.cpsr &= !StatusFlags::OVERFLOW.bits();
+        }
     }
 
     /// Set flag NZCV

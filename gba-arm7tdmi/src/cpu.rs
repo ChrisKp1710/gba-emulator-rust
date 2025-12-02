@@ -136,13 +136,149 @@ impl ARM7TDMI {
     /// Esegui un'istruzione ARM (32-bit)
     fn execute_arm<M: MemoryBus>(&mut self, bus: &mut M) -> u32 {
         let pc = self.regs.pc();
-        let _instruction = bus.read_word(pc);
+        let instruction = bus.read_word(pc);
         self.regs.set_pc(pc.wrapping_add(4));
 
-        // TODO: Decode ed esecuzione istruzioni ARM
-        // PROSSIMO STEP: Implementare decoder in arm.rs
-        // Vedere: gba-arm7tdmi/src/arm.rs per le condizioni
-        1
+        // Verifica condition code
+        let condition = crate::arm::Condition::from_opcode(instruction);
+        if !condition.check(self.regs.cpsr) {
+            return 1; // Istruzione skippata, 1 ciclo
+        }
+
+        // Decodifica istruzione
+        use crate::arm::ArmInstruction;
+        let decoded = crate::arm::decode_arm(instruction);
+
+        // Esegui in base al tipo
+        match decoded {
+            ArmInstruction::DataProcessing {
+                opcode,
+                set_flags,
+                rn,
+                rd,
+                operand2,
+                immediate,
+            } => {
+                let (op2_value, carry) =
+                    crate::instructions::alu::decode_operand2(operand2, immediate, &self.regs);
+                crate::instructions::alu::execute_data_processing(
+                    &mut self.regs,
+                    opcode,
+                    rd,
+                    rn,
+                    op2_value,
+                    set_flags,
+                    carry,
+                )
+            }
+
+            ArmInstruction::Branch { link, offset } => {
+                crate::instructions::branch::execute_branch(&mut self.regs, offset, link)
+            }
+
+            ArmInstruction::BranchExchange { rn } => {
+                crate::instructions::branch::execute_branch_exchange(&mut self.regs, rn)
+            }
+
+            ArmInstruction::SingleDataTransfer {
+                load,
+                byte,
+                pre_index,
+                add,
+                writeback,
+                rn,
+                rd,
+                offset,
+                immediate,
+            } => {
+                let offset_val = if immediate {
+                    offset
+                } else {
+                    // Offset è un registro con shift
+                    let (val, _) =
+                        crate::instructions::alu::decode_operand2(offset, false, &self.regs);
+                    val
+                };
+                crate::instructions::load_store::execute_single_data_transfer(
+                    &mut self.regs,
+                    bus,
+                    load,
+                    byte,
+                    pre_index,
+                    add,
+                    writeback,
+                    rn,
+                    rd,
+                    offset_val,
+                )
+            }
+
+            ArmInstruction::BlockDataTransfer {
+                load,
+                pre_index,
+                add,
+                writeback,
+                rn,
+                register_list,
+                ..
+            } => crate::instructions::load_store::execute_block_data_transfer(
+                &mut self.regs,
+                bus,
+                load,
+                pre_index,
+                add,
+                writeback,
+                rn,
+                register_list,
+            ),
+
+            ArmInstruction::Multiply {
+                accumulate,
+                set_flags,
+                rd,
+                rn,
+                rs,
+                rm,
+            } => {
+                // Implementazione base multiply
+                let rm_val = self.regs.r[rm as usize];
+                let rs_val = self.regs.r[rs as usize];
+                let mut result = rm_val.wrapping_mul(rs_val);
+
+                if accumulate {
+                    let rn_val = self.regs.r[rn as usize];
+                    result = result.wrapping_add(rn_val);
+                }
+
+                self.regs.r[rd as usize] = result;
+
+                if set_flags {
+                    self.regs.set_flag_n((result & 0x8000_0000) != 0);
+                    self.regs.set_flag_z(result == 0);
+                    // C è undefined, V non modificato
+                }
+
+                // MUL/MLA: dipende dai cicli, base 1-4
+                2
+            }
+
+            ArmInstruction::SWI { comment: _ } => {
+                // Software Interrupt (syscall)
+                // Salva stato e salta a SWI handler
+                let pc = self.regs.pc();
+                self.regs.change_mode(crate::registers::Mode::Supervisor);
+                self.regs.set_spsr(self.regs.cpsr);
+                self.regs.r[14] = pc; // Salva LR
+                self.regs.set_pc(0x08); // SWI vector
+                3
+            }
+
+            ArmInstruction::Undefined => {
+                // Istruzione non riconosciuta
+                // TODO: Generare undefined instruction exception
+                1
+            }
+        }
     } //==========================================================================
       // ESECUZIONE ISTRUZIONI THUMB (16-bit)
       //==========================================================================
@@ -249,5 +385,175 @@ mod tests {
         cpu.reset();
         assert_eq!(cpu.cycles, 0);
         assert_eq!(cpu.regs.pc(), 0);
+    }
+
+    #[test]
+    fn test_mov_instruction() {
+        // Test MOV R0, #42 con condition AL (sempre)
+        // Formato: cond 00 I opcode S rn rd operand2
+        // 1110 00 1 1101 0 0000 0000 000000101010
+        // E3A0002A in hex
+
+        struct TestBus {
+            instructions: Vec<u32>,
+            pc: usize,
+        }
+
+        impl MemoryBus for TestBus {
+            fn read_word(&mut self, addr: u32) -> u32 {
+                let idx = (addr / 4) as usize;
+                if idx < self.instructions.len() {
+                    self.instructions[idx]
+                } else {
+                    0
+                }
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_halfword(&mut self, _: u32) -> u16 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        let mut bus = TestBus {
+            instructions: vec![0xE3A0_002A], // MOV R0, #42
+            pc: 0,
+        };
+
+        cpu.step(&mut bus);
+
+        assert_eq!(cpu.regs.r[0], 42);
+        assert_eq!(cpu.regs.pc(), 4);
+    }
+
+    #[test]
+    fn test_add_instruction() {
+        // Test ADD R2, R0, R1
+        // E0802001: ADD R2, R0, R1
+
+        struct TestBus {
+            instructions: Vec<u32>,
+        }
+
+        impl MemoryBus for TestBus {
+            fn read_word(&mut self, addr: u32) -> u32 {
+                let idx = (addr / 4) as usize;
+                if idx < self.instructions.len() {
+                    self.instructions[idx]
+                } else {
+                    0
+                }
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_halfword(&mut self, _: u32) -> u16 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.r[0] = 10;
+        cpu.regs.r[1] = 20;
+
+        let mut bus = TestBus {
+            instructions: vec![0xE080_2001], // ADD R2, R0, R1
+        };
+
+        cpu.step(&mut bus);
+
+        assert_eq!(cpu.regs.r[2], 30);
+    }
+
+    #[test]
+    fn test_branch_instruction() {
+        // Test B #8 (salta avanti di 8 byte = 2 istruzioni)
+        // EA000000: B #0 (offset 0 + 8 per PC)
+
+        struct TestBus;
+        impl MemoryBus for TestBus {
+            fn read_word(&mut self, _: u32) -> u32 {
+                0xEA00_0001 // B #4 (salta 1 istruzione avanti)
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_halfword(&mut self, _: u32) -> u16 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        let mut bus = TestBus;
+
+        cpu.step(&mut bus);
+
+        // PC iniziale 0, legge istruzione, incrementa a 4
+        // Branch con offset 1 word = 4 byte
+        // Nuovo PC = 4 + 4 = 8
+        assert_eq!(cpu.regs.pc(), 8);
+    }
+
+    #[test]
+    fn test_ldr_str_instructions() {
+        // Test STR e LDR
+        use std::collections::HashMap;
+
+        struct MemBus {
+            memory: HashMap<u32, u32>,
+            instructions: Vec<u32>,
+        }
+
+        impl MemoryBus for MemBus {
+            fn read_word(&mut self, addr: u32) -> u32 {
+                if addr < (self.instructions.len() * 4) as u32 {
+                    self.instructions[(addr / 4) as usize]
+                } else {
+                    *self.memory.get(&(addr & !3)).unwrap_or(&0)
+                }
+            }
+            fn write_word(&mut self, addr: u32, value: u32) {
+                self.memory.insert(addr & !3, value);
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_halfword(&mut self, _: u32) -> u16 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.r[0] = 0x1234_5678;
+        cpu.regs.r[1] = 0x0300_0000; // Address in IWRAM
+
+        let mut bus = MemBus {
+            memory: HashMap::new(),
+            instructions: vec![
+                0xE581_0000, // STR R0, [R1]
+                0xE591_2000, // LDR R2, [R1]
+            ],
+        };
+
+        // STR R0, [R1]
+        cpu.step(&mut bus);
+        assert_eq!(bus.memory.get(&0x0300_0000), Some(&0x1234_5678));
+
+        // LDR R2, [R1]
+        cpu.step(&mut bus);
+        assert_eq!(cpu.regs.r[2], 0x1234_5678);
     }
 }

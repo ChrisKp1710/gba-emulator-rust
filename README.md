@@ -34,6 +34,9 @@ gba-emulator-rust/
 └── Cargo.toml          # Workspace configuration
 ```
 
+> 📘 **Per capire in dettaglio l'architettura e come modificare il codice:**
+> Leggi [GUIDA_ARCHITETTURA.md](GUIDA_ARCHITETTURA.md) - Spiega step-by-step ogni componente!
+
 ## 🚀 Compilazione
 
 ### Requisiti
@@ -108,7 +111,7 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 
 - **Arrow Keys** - D-Pad
 - **Z** - Button A
-- **X** - Button B  
+- **X** - Button B
 - **A** - Button L
 - **S** - Button R
 - **Enter** - Start
@@ -138,22 +141,26 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 ### 📋 Pianificato
 
 1. PPU (Picture Processing Unit) completa
+
    - [ ] Background rendering (Mode 0-2)
    - [ ] Sprite rendering
    - [ ] Modalità bitmap (Mode 3-5)
    - [ ] Effects (blending, mosaic)
 
 2. APU (Audio Processing Unit)
+
    - [ ] Channel 1-4 (GB compatibili)
    - [ ] DMA audio channels
    - [ ] Audio mixing
 
 3. Input e Periferiche
+
    - [ ] Controller input funzionante
    - [ ] Timer hardware
    - [ ] DMA controller
 
 4. Salvataggi
+
    - [ ] Save States
    - [ ] SRAM
    - [ ] Flash
@@ -189,7 +196,7 @@ cargo test --package gba-core
 Target di performance:
 
 - **60 FPS** costanti
-- **Latenza input** < 16ms  
+- **Latenza input** < 16ms
 - **Consumo CPU** < 50% (single core moderno)
 - **Memoria** < 100 MB
 

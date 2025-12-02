@@ -3,8 +3,9 @@
 ## Come È Strutturato il Progetto
 
 Questo emulatore GBA è progettato con **architettura modulare**. Ogni componente è separato e indipendente, così puoi:
+
 - ✅ Capire una parte senza dover conoscere tutto
-- ✅ Modificare un modulo senza rompere gli altri  
+- ✅ Modificare un modulo senza rompere gli altri
 - ✅ Testare ogni componente singolarmente
 - ✅ Aggiungere features gradualmente
 
@@ -97,6 +98,7 @@ gba-emulator-rust/
 **Cosa fa**: Esegue le istruzioni del gioco
 
 **Come funziona**:
+
 ```rust
 // Ogni istruzione passa per questi step:
 1. Fetch  → Leggi istruzione dalla memoria (PC)
@@ -106,12 +108,14 @@ gba-emulator-rust/
 ```
 
 **Dove siamo**:
+
 - ✅ Struttura base fatta
 - ✅ Registri funzionanti
 - 🚧 TODO: Implementare tutte le istruzioni ARM
 - 🚧 TODO: Implementare tutte le istruzioni THUMB
 
 **Come continuare**:
+
 1. Apri `gba-arm7tdmi/src/arm.rs`
 2. Implementa decoder per istruzioni ARM
 3. Per ogni tipo istruzione, crea una funzione
@@ -124,6 +128,7 @@ gba-emulator-rust/
 **Cosa fa**: Gestisce accesso a tutta la memoria del GBA
 
 **Mappa memoria**:
+
 ```
 0x00000000  ┌─────────────┐
             │ BIOS (16KB) │ ← Sistema, solo lettura
@@ -147,6 +152,7 @@ gba-emulator-rust/
 ```
 
 **Dove siamo**:
+
 - ✅ Tutte le regioni implementate
 - ✅ Read/Write funzionanti
 - 🚧 TODO: Timing accurato (wait states)
@@ -158,6 +164,7 @@ gba-emulator-rust/
 **Cosa fa**: Renderizza la grafica
 
 **Come funziona**:
+
 ```
 Frame (1/60 sec)
 │
@@ -177,6 +184,7 @@ Frame (1/60 sec)
 ```
 
 **Dove siamo**:
+
 - ✅ Timing base (scanline counter)
 - ✅ VBlank detection
 - 🚧 TODO: Background rendering
@@ -184,6 +192,7 @@ Frame (1/60 sec)
 - 🚧 TODO: Modalità grafiche
 
 **Come continuare**:
+
 1. Implementa rendering Mode 3 (più semplice, bitmap diretto)
 2. Poi Mode 0 (tile-based, usato dai Pokémon)
 3. Aggiungi sprite (OAM)
@@ -195,6 +204,7 @@ Frame (1/60 sec)
 **Cosa fa**: Gestisce eventi hardware
 
 **Tipi di interrupt**:
+
 - **VBlank**: Fine frame (60 volte/sec) → Gioco aggiorna logica
 - **HBlank**: Fine scanline → Effetti per-linea
 - **Timer**: Timer scaduti
@@ -202,6 +212,7 @@ Frame (1/60 sec)
 - **Input**: Tasto premuto
 
 **Come funziona**:
+
 ```rust
 1. Hardware segnala evento → request(VBLANK)
 2. IF flag viene settato
@@ -216,6 +227,7 @@ Frame (1/60 sec)
 ## 🎯 Come Procedere - Step by Step
 
 ### FASE 1: CPU Funzionante
+
 **Obiettivo**: Far eseguire istruzioni base
 
 ```
@@ -241,6 +253,7 @@ Step 1.5: Test con ARM test suite
 ```
 
 ### FASE 2: Grafica Base
+
 **Obiettivo**: Vedere qualcosa sullo schermo
 
 ```
@@ -261,6 +274,7 @@ Step 2.3: Implementa sprite (OAM)
 ```
 
 ### FASE 3: Input e I/O
+
 **Obiettivo**: Controllare il gioco
 
 ```
@@ -278,6 +292,7 @@ Step 3.3: Implementa DMA
 ```
 
 ### FASE 4: Audio
+
 **Obiettivo**: Sentire musica
 
 ```
@@ -287,6 +302,7 @@ Step 4.3: Mixing audio
 ```
 
 ### FASE 5: Salvataggi
+
 **Obiettivo**: Salvare progresso
 
 ```
@@ -350,17 +366,21 @@ fn test_add() {
 ## 📚 Risorse per Ogni Componente
 
 ### CPU
+
 - **ARM7TDMI Manual**: http://infocenter.arm.com/help/topic/com.arm.doc.ddi0210c/DDI0210B.pdf
 - **GBATEK - CPU**: http://problemkaputt.de/gbatek.htm#armcpureference
 
 ### Memoria
+
 - **GBATEK - Memory**: http://problemkaputt.de/gbatek.htm#gbamemorymap
 
 ### Grafica
+
 - **TONC - Video**: https://www.coranac.com/tonc/text/video.htm
 - **GBATEK - Video**: http://problemkaputt.de/gbatek.htm#lcdvideocontroller
 
 ### Audio
+
 - **GBATEK - Sound**: http://problemkaputt.de/gbatek.htm#gbasoundcontroller
 
 ---

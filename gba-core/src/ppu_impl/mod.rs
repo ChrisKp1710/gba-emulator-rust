@@ -3,6 +3,8 @@
 mod constants;
 mod mode0;
 mod mode3;
+mod mode4;
+mod mode5;
 mod sprites;
 mod types;
 
@@ -174,10 +176,28 @@ impl PPU {
                 mode3::render_mode3_scanline(self.scanline, vram, &mut self.framebuffer);
             }
             DisplayMode::Mode4 => {
-                // TODO: Mode 4
+                // Bit 4 of DISPCNT = frame select (0 or 1)
+                let frame_select = (self.dispcnt & (1 << 4)) != 0;
+                mode4::render_mode4_scanline(
+                    &mut self.framebuffer,
+                    vram,
+                    &self.palette_ram,
+                    self.scanline as usize,
+                    frame_select,
+                );
+            }
+            DisplayMode::Mode5 => {
+                // Bit 4 of DISPCNT = frame select (0 or 1)
+                let frame_select = (self.dispcnt & (1 << 4)) != 0;
+                mode5::render_mode5_scanline(
+                    &mut self.framebuffer,
+                    vram,
+                    self.scanline as usize,
+                    frame_select,
+                );
             }
             _ => {
-                // TODO: Other modes
+                // TODO: Mode 1, 2 (affine backgrounds)
             }
         }
 

@@ -1,8 +1,8 @@
 # Architettura Modulare - GBA Emulator
 
-**Versione:** v0.9.0 (Save System completo) 💾  
-**Data:** 2 dicembre 2025  
-**Test Suite:** 141/141 passano ✅
+**Versione:** v1.0.0 (PPU Mode 4/5 completo) 🎨  
+**Data:** 3 dicembre 2025  
+**Test Suite:** 151/151 passano ✅
 
 ## 📐 Principi di Design
 
@@ -33,8 +33,10 @@ gba-emulator-rust/
 │   │   │   ├── types.rs       # (53 lines) - BgControl, DisplayMode
 │   │   │   ├── sprites.rs     # (224 lines) - Sprite rendering
 │   │   │   ├── mode0.rs       # (173 lines) - Tile backgrounds
-│   │   │   ├── mode3.rs       # (20 lines) - Bitmap mode
-│   │   │   └── mod.rs         # (247 lines) - PPU struct principale
+│   │   │   ├── mode3.rs       # (20 lines) - Bitmap RGB
+│   │   │   ├── mode4.rs       # (156 lines) - Bitmap paletted
+│   │   │   ├── mode5.rs       # (188 lines) - Bitmap RGB small
+│   │   │   └── mod.rs         # (286 lines) - PPU struct principale
 │   │   │
 │   │   ├── apu_impl/      # APU modularizzata
 │   │   │   ├── constants.rs   # (26 lines) - Registri audio
@@ -100,6 +102,11 @@ gba-emulator-rust/
 | **CPU**    | 1 + tests | 781          | 426        | 10   | ✅ Completo |
 | **PPU**    | 6 + tests | 752          | in ppu.rs  | 12   | ✅ Completo |
 | **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
+| Componente | Moduli    | Righe Codice | Righe Test | Test | Status      |
+| ---------- | --------- | ------------ | ---------- | ---- | ----------- |
+| **CPU**    | 1 + tests | 781          | 426        | 10   | ✅ Completo |
+| **PPU**    | 8 + tests | 1096         | in ppu.rs  | 22   | ✅ Completo |
+| **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
 | **Timer**  | 4 + tests | 231          | 194        | 13   | ✅ Completo |
 | **DMA**    | 4 + tests | 383          | 300        | 19   | ✅ Completo |
 | **BIOS**   | 3 + tests | 337          | 167        | 21   | ✅ Completo |
@@ -108,18 +115,7 @@ gba-emulator-rust/
 | **Memory** | 1         | 310          | -          | 0    | ✅ Stabile  |
 | **Input**  | 1         | 120          | -          | 0    | ✅ Completo |
 
-**Totale Test Suite: 141 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual)
-| **CPU**    | 1 + tests | 781          | 426        | 10   | ✅ Completo |
-| **PPU**    | 6 + tests | 752          | in ppu.rs  | 12   | ✅ Completo |
-| **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
-| **Timer**  | 4 + tests | 231          | 194        | 13   | ✅ Completo |
-| **DMA**    | 4 + tests | 383          | 300        | 19   | ✅ Completo |
-| **BIOS**   | 3 + tests | 337          | 167        | 21   | ✅ Completo |
-| **Bus**    | 1         | 290          | -          | 0    | ✅ Stabile  |
-| **Memory** | 1         | 310          | -          | 0    | ✅ Stabile  |
-| **Input**  | 1         | 120          | -          | 0    | ✅ Completo |
-
-**Totale Test Suite: 96 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 4 integration)
+**Totale Test Suite: 151 test** (10 CPU + 22 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual)
 
 ### Dimensione File (Policy: max ~250 righe)
 
@@ -133,9 +129,12 @@ gba-emulator-rust/
 
 **File Moderni (modulari):**
 
-- PPU: 6 moduli da 20-247 righe ✅
+- PPU: 8 moduli da 20-286 righe ✅ (Mode 4/5 aggiunti)
 - APU: 7 moduli da 14-216 righe ✅
 - Timer: 4 moduli da 18-90 righe ✅
+- DMA: 4 moduli da 34-171 righe ✅
+- BIOS: 3 moduli da 39-209 righe ✅
+- Save: 6 moduli da 48-233 righe ✅
 - DMA: 4 moduli da 34-171 righe ✅
 - BIOS: 3 moduli da 39-209 righe ✅
 

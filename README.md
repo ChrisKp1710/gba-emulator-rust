@@ -19,24 +19,34 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - **Codice professionale**: 0 warning Clippy ✅
 - **✅ PPU (Picture Processing Unit) Completa** 🎨
 
-  - **Architettura modulare**: 6 moduli (`ppu_impl/`) + test separati
+  - **Architettura modulare**: 8 moduli (`ppu_impl/`) + test separati
   - **Mode 0 - Tile Backgrounds**
     - 4 background layers (BG0-BG3) con tile 8x8
     - Palette RAM (1KB): 16 e 256 colori
     - BG Control (BGxCNT): priority, char/screen base, palette mode
     - BG Scrolling (BGxHOFS/VOFS) per tutti i layer
     - Layer compositing con priority e trasparenza
-  - **Mode 3 - Bitmap**
+  - **Mode 3 - Bitmap RGB**
     - Rendering RGB555 240x160 pixel
     - I/O registers: DISPCNT, DISPSTAT, VCOUNT
     - VBlank interrupt integrato
+  - **Mode 4 - Bitmap Paletted** 🎨 **NUOVO**
+    - 8-bit indexed color (256 colori)
+    - Risoluzione 240x160 pixel
+    - Page flipping (2 frame buffer per double buffering)
+    - Frame 0/1 selezionabili via DISPCNT bit 4
+  - **Mode 5 - Bitmap RGB Small** 🎨 **NUOVO**
+    - 16-bit RGB555 direct color
+    - Risoluzione 160x128 pixel (centrato su 240x160)
+    - Page flipping (2 frame buffer)
+    - Bordi neri automatici per centering
   - **Sprite Rendering (OAM)**
     - 128 sprite con OAM 1KB
     - Tutte le dimensioni: 8x8, 16x16, 32x32, 64x64, wide, tall
     - OBJ palette (512 byte): 16 e 256 colori
     - H-flip/V-flip, priority, trasparenza
     - VRAM OBJ tile rendering (0x06010000+)
-  - **12 test unitari** per PPU rendering completo ✅
+  - **22 test unitari** per PPU rendering completo ✅
 
 - **✅ APU (Audio Processing Unit) Completa** 🔊
 
@@ -158,7 +168,7 @@ Il progetto è strutturato in crate separati per modularità e riusabilità:
 gba-emulator-rust/
 ├── gba-core/           # Core dell'emulatore
 │   ├── src/
-│   │   ├── ppu_impl/   # PPU modularizzata (6 moduli)
+│   │   ├── ppu_impl/   # PPU modularizzata (8 moduli)
 │   │   ├── apu_impl/   # APU modularizzata (7 moduli)
 │   │   ├── timer_impl/ # Timer modularizzato (4 moduli)
 │   │   ├── dma_impl/   # DMA modularizzato (4 moduli)
@@ -403,7 +413,7 @@ cargo test --package gba-core save
 cargo test --package gba-core --test
 ```
 
-### Test Suite - 141/141 Passano ✅
+### Test Suite - 151/151 Passano ✅
 
 **CPU ARM7TDMI (10 test)** - `cpu_tests.rs`
 
@@ -417,7 +427,7 @@ cargo test --package gba-core --test
 - ✅ `test_thumb_ldr_str` - THUMB LDR/STR con offset
 - ✅ `test_thumb_branch` - THUMB Branch incondizionale
 
-**PPU Rendering (12 test)** - `ppu.rs`
+**PPU Rendering (22 test)** - `ppu.rs`
 
 _Mode 0 - Tile Backgrounds (7 test):_
 
@@ -428,6 +438,22 @@ _Mode 0 - Tile Backgrounds (7 test):_
 - ✅ `test_bg_control_parsing` - Parsing BGxCNT
 - ✅ `test_bg_screen_size` - Dimensioni screen base
 - ✅ `test_palette_ram_access` - Lettura/scrittura palette
+
+_Mode 4 - Bitmap Paletted (4 test):_ **NUOVO** 🎨
+
+- ✅ `test_mode4_basic_render` - Rendering 8-bit indexed
+- ✅ `test_mode4_page_flip` - Frame 0/1 switching
+- ✅ `test_mode4_256_colors` - 256-color palette gradient
+- ✅ `test_mode4_scanline_offset` - Scanline offsetting
+
+_Mode 5 - Bitmap RGB (6 test):_ **NUOVO** 🎨
+
+- ✅ `test_mode5_basic_render` - 16-bit RGB rendering
+- ✅ `test_mode5_page_flip` - Frame buffer flipping
+- ✅ `test_mode5_dimensions` - 160x128 resolution
+- ✅ `test_mode5_out_of_bounds` - Scanline > 128 handling
+- ✅ `test_mode5_centering` - Centering su 240x160
+- ✅ `test_mode5_gradient` - RGB gradient test
 
 _Sprite Rendering (5 test):_
 

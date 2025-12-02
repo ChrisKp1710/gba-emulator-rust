@@ -1,5 +1,9 @@
 # Architettura Modulare - GBA Emulator
 
+**Versione:** v0.8.0 (BIOS completo) 🎯  
+**Data:** 2 dicembre 2025  
+**Test Suite:** 96/96 passano ✅
+
 ## 📐 Principi di Design
 
 Il progetto segue questi principi fondamentali:
@@ -56,12 +60,19 @@ gba-emulator-rust/
 │   │   │   ├── channel.rs     # (171 lines) - DmaChannel logic
 │   │   │   └── mod.rs         # (119 lines) - DMA struct
 │   │   │
+│   │   ├── bios_impl/     # BIOS modularizzato
+│   │   │   ├── constants.rs   # (39 lines) - SWI constants
+│   │   │   ├── calls.rs       # (209 lines) - BIOS functions
+│   │   │   └── mod.rs         # (89 lines) - BIOS handler
+│   │   │
 │   │   ├── ppu.rs         # (2 lines) - Re-export PPU
 │   │   ├── apu.rs         # (2 lines) - Re-export APU
 │   │   ├── timer.rs       # (2 lines) - Re-export Timer
 │   │   ├── dma.rs         # (2 lines) - Re-export DMA
+│   │   ├── bios.rs        # (2 lines) - Re-export BIOS
 │   │   ├── timer_tests.rs # (194 lines) - Timer tests
 │   │   ├── dma_tests.rs   # (300 lines) - DMA tests
+│   │   ├── bios_tests.rs  # (167 lines) - BIOS tests
 │   │   ├── bus.rs         # (290 lines) - System bus
 │   │   ├── memory.rs      # (310 lines) - Memory system
 │   │   ├── interrupt.rs   # (85 lines) - Interrupts
@@ -91,11 +102,12 @@ gba-emulator-rust/
 | **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
 | **Timer**  | 4 + tests | 231          | 194        | 13   | ✅ Completo |
 | **DMA**    | 4 + tests | 383          | 300        | 19   | ✅ Completo |
+| **BIOS**   | 3 + tests | 337          | 167        | 21   | ✅ Completo |
 | **Bus**    | 1         | 290          | -          | 0    | ✅ Stabile  |
 | **Memory** | 1         | 310          | -          | 0    | ✅ Stabile  |
 | **Input**  | 1         | 120          | -          | 0    | ✅ Completo |
 
-**Totale Test Suite: 75 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 4 integration)
+**Totale Test Suite: 96 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 4 integration)
 
 ### Dimensione File (Policy: max ~250 righe)
 
@@ -112,6 +124,8 @@ gba-emulator-rust/
 - PPU: 6 moduli da 20-247 righe ✅
 - APU: 7 moduli da 14-216 righe ✅
 - Timer: 4 moduli da 18-90 righe ✅
+- DMA: 4 moduli da 34-171 righe ✅
+- BIOS: 3 moduli da 39-209 righe ✅
 
 ## 🎯 Pattern Architetturali
 

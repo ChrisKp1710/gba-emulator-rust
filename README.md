@@ -64,7 +64,7 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - **Memory-mapped I/O**: `0x04000100-0x0400010E`
   - **13 test unitari** per tutti i timer features ✅
 
-- **✅ DMA Controller Completo** 🚀 **NUOVO**
+- **✅ DMA Controller Completo** 🚀
 
   - **Architettura modulare**: 4 moduli (`dma_impl/`) + test separati
   - **4 DMA Channels (DMA0-DMA3)**
@@ -76,6 +76,24 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - **Priority system**: DMA0 (highest) → DMA3 (lowest)
   - **Memory-mapped I/O**: `0x040000B0-0x040000DE`
   - **19 test unitari** per tutti i DMA features ✅
+
+- **✅ BIOS Calls (SWI) Completo** 🎯 **NUOVO**
+
+  - **Architettura modulare**: 3 moduli (`bios_impl/`) + test separati
+  - **Software Interrupt Handler**
+    - State management: halt, interrupt wait
+    - 30+ SWI function numbers definiti
+  - **Math Functions**
+    - Div/DivArm: divisione signed con remainder
+    - Sqrt: radice quadrata intera
+    - ArcTan/ArcTan2: funzioni trigonometriche
+  - **Memory Operations**
+    - CpuSet/CpuFastSet: copy/fill 16/32-bit
+    - BitUnPack: decompressione bit-packed
+  - **Decompression**
+    - LZ77UnComp: decompressione LZ77 (WRAM/VRAM)
+    - RLUnComp: Run-Length decompression (WRAM/VRAM)
+  - **21 test unitari** per tutte le BIOS functions ✅
 
 - **✅ Input Controller Completo**
   - KEYINPUT register (0x04000130)
@@ -102,9 +120,9 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 
 ### 📋 Pianificato
 
-- **PPU Mode 4/5** - Modi bitmap aggiuntivi
-- **BIOS Calls** - SWI e funzioni BIOS per compatibilità
-- **Save States** - Salvataggio/caricamento stato emulatore
+- **PPU Mode 4/5** - Modi bitmap paletted per grafica avanzata
+- **Save System** - SRAM/Flash/EEPROM per persistenza giochi
+- **Save States** - Salvataggio/caricamento stato emulatore completo
 - **Supporto Salvataggi** - SRAM, Flash, EEPROM per giochi
 - **Ottimizzazioni Avanzate** - JIT compilation, SIMD
 
@@ -122,6 +140,8 @@ gba-emulator-rust/
 │   │   ├── ppu.rs      # Re-export PPU
 │   │   ├── apu.rs      # Re-export APU
 │   │   ├── timer.rs    # Re-export Timer
+│   │   ├── dma.rs      # Re-export DMA
+│   │   ├── bios.rs     # Re-export BIOS
 │   │   ├── bus.rs      # System bus e I/O mapping
 │   │   ├── memory.rs   # Memory management
 │   │   └── ...
@@ -260,11 +280,18 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ 4 DMA channels con priority
    - ✅ Transfer modes, address control, timing
    - ✅ Test separati: 19 test unitari
-6. **Input controller completo**
+6. **BIOS Calls (SWI) completo** 🎯
+   - ✅ Architettura modulare (3 moduli in bios_impl/)
+   - ✅ Software interrupt handler con state management
+   - ✅ Math functions (Div, Sqrt, ArcTan)
+   - ✅ Memory operations (CpuSet, CpuFastSet)
+   - ✅ Decompression (LZ77, RLE)
+   - ✅ Test separati: 21 test unitari
+7. **Input controller completo**
    - ✅ KEYINPUT register
    - ✅ D-Pad + A/B/L/R/Start/Select
    - ✅ SDL2 integration
-7. **Sistema base completo**
+8. **Sistema base completo**
    - ✅ Memoria e bus
    - ✅ Interrupt controller
    - ✅ Caricamento ROM
@@ -310,7 +337,7 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test (75 test totali)
+# Run tutti i test (96 test totali)
 cargo test --workspace
 
 # Test CPU ARM7TDMI (10 test unitari)
@@ -328,11 +355,14 @@ cargo test --package gba-core timer
 # Test DMA (19 test unitari)
 cargo test --package gba-core dma
 
+# Test BIOS (21 test unitari)
+cargo test --package gba-core bios
+
 # Test integrazione (4 test)
 cargo test --package gba-core --test
 ```
 
-### Test Suite - 75/75 Passano ✅
+### Test Suite - 96/96 Passano ✅
 
 **CPU ARM7TDMI (10 test)** - `cpu_tests.rs`
 
@@ -448,6 +478,38 @@ _Advanced (2 test):_
 
 - ✅ `test_dma_priority` - Channel priority
 - ✅ `test_dma_reset` - DMA reset
+
+**BIOS Calls (21 test)** - `bios_tests.rs`
+
+_State Management (8 test):_
+
+- ✅ `test_bios_creation` - BIOS initialization
+- ✅ `test_bios_reset` - State reset
+- ✅ `test_bios_halt` - Halt state
+- ✅ `test_bios_stop` - Stop state
+- ✅ `test_bios_vblank_wait` - VBlank interrupt wait
+- ✅ `test_bios_intr_wait` - Generic interrupt wait
+- ✅ `test_bios_clear_halt` - Clear halt
+- ✅ `test_bios_clear_wait` - Clear wait
+
+_Math Functions (7 test):_
+
+- ✅ `test_div_normal` - Division normale
+- ✅ `test_div_negative` - Division con negativi
+- ✅ `test_div_by_zero` - Division by zero handling
+- ✅ `test_sqrt_perfect` - Square root perfetta
+- ✅ `test_sqrt_imperfect` - Square root imperfetta
+- ✅ `test_arctan_zero` - ArcTan zero
+- ✅ `test_arctan_positive` - ArcTan positive
+- ✅ `test_arctan2_quadrants` - ArcTan2 quadrants
+- ✅ `test_arctan2_zero` - ArcTan2 zero
+
+_Core Features (6 test):_
+
+- ✅ `test_swi_constants` - SWI constants
+- ✅ `test_cpuset_flags` - CpuSet flags
+- ✅ `test_soft_reset_no_panic` - SoftReset
+- ✅ `test_bios_unknown_swi` - Unknown SWI handling
 
 **Integrazione (4 test)** - `tests/`
 

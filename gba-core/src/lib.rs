@@ -1,4 +1,8 @@
 pub mod apu;
+pub mod bios;
+mod bios_impl;
+#[cfg(test)]
+mod bios_tests;
 pub mod bus;
 pub mod cartridge;
 pub mod dma;

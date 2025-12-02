@@ -202,7 +202,7 @@ pub fn decode_arm(instruction: u32) -> ArmInstruction {
             offset |= 0xFF00_0000u32 as i32;
         }
         // Moltiplica per 4 (istruzioni sono word-aligned)
-        offset = offset << 2;
+        offset <<= 2;
 
         return ArmInstruction::Branch {
             link: (instruction & (1 << 24)) != 0,

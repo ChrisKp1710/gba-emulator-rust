@@ -358,7 +358,7 @@ pub fn decode_thumb(instruction: u16) -> ThumbInstruction {
     if (instruction & 0xF000) == 0xF000 {
         return ThumbInstruction::LongBranchLink {
             first_instruction: (instruction & (1 << 11)) != 0,
-            offset: (instruction & 0x7FF) as u16,
+            offset: instruction & 0x7FF,
         };
     }
 

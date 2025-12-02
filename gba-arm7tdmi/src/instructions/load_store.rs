@@ -8,41 +8,43 @@
 
 use crate::{cpu::MemoryBus, registers::Registers};
 
+/// Parametri per Single Data Transfer (LDR/STR)
+pub struct SingleDataTransferParams {
+    pub load: bool,
+    pub byte: bool,
+    pub pre_index: bool,
+    pub add: bool,
+    pub writeback: bool,
+    pub rn: u8,
+    pub rd: u8,
+    pub offset: u32,
+}
+
 /// Esegue Single Data Transfer (LDR/STR)
 ///
 /// # Arguments
 /// * `regs` - Registri CPU
 /// * `bus` - Bus memoria per accesso
-/// * `load` - true=LDR, false=STR
-/// * `byte` - true=byte, false=word
-/// * `pre_index` - Se true, applica offset prima dell'accesso
-/// * `add` - Se true, somma offset; se false, sottrai
-/// * `writeback` - Se true, scrivi indirizzo finale in Rn
-/// * `rn` - Registro base
-/// * `rd` - Registro source/dest
-/// * `offset` - Offset da applicare
+/// * `params` - Parametri dell'istruzione
 ///
 /// # Returns
 /// Numero di cicli usati
 pub fn execute_single_data_transfer<M: MemoryBus>(
     regs: &mut Registers,
     bus: &mut M,
-    load: bool,
-    byte: bool,
-    pre_index: bool,
-    add: bool,
-    writeback: bool,
-    rn: u8,
-    rd: u8,
-    offset: u32,
+    params: &SingleDataTransferParams,
 ) -> u32 {
-    let base = regs.r[rn as usize];
+    let base = regs.r[params.rn as usize];
 
     // Calcola offset (può essere signed)
-    let offset_val = if add { offset as i32 } else { -(offset as i32) };
+    let offset_val = if params.add {
+        params.offset as i32
+    } else {
+        -(params.offset as i32)
+    };
 
     // Calcola indirizzo
-    let address = if pre_index {
+    let address = if params.pre_index {
         // Pre-indexed: usa (base + offset)
         (base as i32).wrapping_add(offset_val) as u32
     } else {
@@ -51,29 +53,29 @@ pub fn execute_single_data_transfer<M: MemoryBus>(
     };
 
     // Esegui load o store
-    if load {
+    if params.load {
         // LDR: carica da memoria
-        let value = if byte {
+        let value = if params.byte {
             bus.read_byte(address) as u32
         } else {
             bus.read_word(address & !3) // Word allineato
         };
 
-        if rd == 15 {
+        if params.rd == 15 {
             // Load in PC
             regs.set_pc(value & !3);
         } else {
-            regs.r[rd as usize] = value;
+            regs.r[params.rd as usize] = value;
         }
     } else {
         // STR: salva in memoria
-        let value = if rd == 15 {
+        let value = if params.rd == 15 {
             regs.pc() + 12 // PC+12 quando STR usa R15
         } else {
-            regs.r[rd as usize]
+            regs.r[params.rd as usize]
         };
 
-        if byte {
+        if params.byte {
             bus.write_byte(address, value as u8);
         } else {
             bus.write_word(address & !3, value); // Word allineato
@@ -81,19 +83,29 @@ pub fn execute_single_data_transfer<M: MemoryBus>(
     }
 
     // Writeback: aggiorna registro base
-    if writeback || !pre_index {
+    if params.writeback || !params.pre_index {
         let final_address = (base as i32).wrapping_add(offset_val) as u32;
-        if rn != 15 {
-            regs.r[rn as usize] = final_address;
+        if params.rn != 15 {
+            regs.r[params.rn as usize] = final_address;
         }
     }
 
     // Cicli: 1S + 1N + 1I (load) o 2N (store)
-    if load {
+    if params.load {
         3
     } else {
         2
     }
+}
+
+/// Parametri per Block Data Transfer (LDM/STM)
+pub struct BlockDataTransferParams {
+    pub load: bool,
+    pub pre_index: bool,
+    pub add: bool,
+    pub writeback: bool,
+    pub rn: u8,
+    pub register_list: u16,
 }
 
 /// Esegue Block Data Transfer (LDM/STM)
@@ -103,30 +115,20 @@ pub fn execute_single_data_transfer<M: MemoryBus>(
 /// # Arguments
 /// * `regs` - Registri CPU
 /// * `bus` - Bus memoria
-/// * `load` - true=LDM, false=STM
-/// * `pre_index` - Se true, incrementa prima dell'accesso
-/// * `add` - Se true, incrementa; se false, decrementa
-/// * `writeback` - Se true, aggiorna Rn con indirizzo finale
-/// * `rn` - Registro base
-/// * `register_list` - Bitmask registri da trasferire (bit 0=R0, bit 15=R15)
+/// * `params` - Parametri dell'istruzione
 ///
 /// # Returns
 /// Numero di cicli usati
 pub fn execute_block_data_transfer<M: MemoryBus>(
     regs: &mut Registers,
     bus: &mut M,
-    load: bool,
-    pre_index: bool,
-    add: bool,
-    writeback: bool,
-    rn: u8,
-    register_list: u16,
+    params: &BlockDataTransferParams,
 ) -> u32 {
-    let mut address = regs.r[rn as usize];
-    let count = register_list.count_ones();
+    let mut address = regs.r[params.rn as usize];
+    let count = params.register_list.count_ones();
 
     // Calcola indirizzo iniziale per decremento
-    if !add {
+    if !params.add {
         address = address.wrapping_sub(count * 4);
     }
 
@@ -134,10 +136,10 @@ pub fn execute_block_data_transfer<M: MemoryBus>(
 
     // Trasferisci ogni registro nella lista
     for i in 0..16 {
-        if (register_list & (1 << i)) != 0 {
+        if (params.register_list & (1 << i)) != 0 {
             // Pre-increment se richiesto
-            if pre_index {
-                address = if add {
+            if params.pre_index {
+                address = if params.add {
                     address.wrapping_add(4)
                 } else {
                     address.wrapping_sub(4)
@@ -145,7 +147,7 @@ pub fn execute_block_data_transfer<M: MemoryBus>(
             }
 
             // Esegui load/store
-            if load {
+            if params.load {
                 let value = bus.read_word(address);
                 if i == 15 {
                     regs.set_pc(value & !3);
@@ -158,8 +160,8 @@ pub fn execute_block_data_transfer<M: MemoryBus>(
             }
 
             // Post-increment se non pre
-            if !pre_index {
-                address = if add {
+            if !params.pre_index {
+                address = if params.add {
                     address.wrapping_add(4)
                 } else {
                     address.wrapping_sub(4)
@@ -171,17 +173,17 @@ pub fn execute_block_data_transfer<M: MemoryBus>(
     }
 
     // Writeback
-    if writeback {
-        let final_address = if add {
-            regs.r[rn as usize].wrapping_add(count * 4)
+    if params.writeback {
+        let final_address = if params.add {
+            regs.r[params.rn as usize].wrapping_add(count * 4)
         } else {
-            regs.r[rn as usize].wrapping_sub(count * 4)
+            regs.r[params.rn as usize].wrapping_sub(count * 4)
         };
-        regs.r[rn as usize] = final_address;
+        regs.r[params.rn as usize] = final_address;
     }
 
     // Cicli: nS + 1N + 1I (LDM) o (n-1)S + 2N (STM)
-    if load {
+    if params.load {
         cycles + 2
     } else {
         cycles + 1

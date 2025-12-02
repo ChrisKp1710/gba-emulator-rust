@@ -12,7 +12,6 @@
 /// Bit 9: L button
 /// 
 /// Nota: I bit sono INVERTITI (0 = premuto, 1 = rilasciato)
-
 pub struct InputController {
     /// Stato corrente dei pulsanti (bit invertiti)
     keyinput: u16,

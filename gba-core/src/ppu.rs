@@ -6,8 +6,7 @@
 /// - VRAM 0x06000000-0x06017FFF (96 KB, ma Mode 3 usa solo primi 75 KB)
 /// - Ogni pixel = 2 byte (RGB555: 5 bit R, 5 bit G, 5 bit B)
 /// - Più semplice da implementare ma usa più memoria
-
-pub const SCREEN_WIDTH: usize = 240;
+const SCREEN_WIDTH: usize = 240;
 pub const SCREEN_HEIGHT: usize = 160;
 
 /// Registri I/O LCD
@@ -58,7 +57,7 @@ impl PPU {
     pub fn read_register(&self, addr: u32) -> u16 {
         match addr {
             DISPCNT => self.dispcnt,
-            DISPSTAT => self.dispstat | ((self.in_vblank() as u16) << 0),
+            DISPSTAT => self.dispstat | (self.in_vblank() as u16),
             VCOUNT => self.scanline,
             _ => 0,
         }

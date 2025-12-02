@@ -34,7 +34,7 @@ impl Bus {
 impl MemoryBus for Bus {
     fn read_byte(&mut self, addr: u32) -> u8 {
         // I/O Registers: 0x04000000-0x040003FE
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             return self.read_io_byte(addr);
         }
         self.memory.read_byte(addr)
@@ -42,7 +42,7 @@ impl MemoryBus for Bus {
 
     fn read_halfword(&mut self, addr: u32) -> u16 {
         // I/O Registers
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             return self.read_io_halfword(addr);
         }
         self.memory.read_halfword(addr)
@@ -50,7 +50,7 @@ impl MemoryBus for Bus {
 
     fn read_word(&mut self, addr: u32) -> u32 {
         // I/O Registers
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             let low = self.read_io_halfword(addr);
             let high = self.read_io_halfword(addr + 2);
             return (low as u32) | ((high as u32) << 16);
@@ -60,7 +60,7 @@ impl MemoryBus for Bus {
 
     fn write_byte(&mut self, addr: u32, value: u8) {
         // I/O Registers
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_byte(addr, value);
             return;
         }
@@ -69,7 +69,7 @@ impl MemoryBus for Bus {
 
     fn write_halfword(&mut self, addr: u32, value: u16) {
         // I/O Registers
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_halfword(addr, value);
             return;
         }
@@ -78,7 +78,7 @@ impl MemoryBus for Bus {
 
     fn write_word(&mut self, addr: u32, value: u32) {
         // I/O Registers
-        if addr >= 0x04000000 && addr < 0x04000400 {
+        if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_halfword(addr, value as u16);
             self.write_io_halfword(addr + 2, (value >> 16) as u16);
             return;

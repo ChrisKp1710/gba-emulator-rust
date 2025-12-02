@@ -202,14 +202,16 @@ impl ARM7TDMI {
                 crate::instructions::load_store::execute_single_data_transfer(
                     &mut self.regs,
                     bus,
-                    load,
-                    byte,
-                    pre_index,
-                    add,
-                    writeback,
-                    rn,
-                    rd,
-                    offset_val,
+                    &crate::instructions::load_store::SingleDataTransferParams {
+                        load,
+                        byte,
+                        pre_index,
+                        add,
+                        writeback,
+                        rn,
+                        rd,
+                        offset: offset_val,
+                    },
                 )
             }
 
@@ -224,12 +226,14 @@ impl ARM7TDMI {
             } => crate::instructions::load_store::execute_block_data_transfer(
                 &mut self.regs,
                 bus,
-                load,
-                pre_index,
-                add,
-                writeback,
-                rn,
-                register_list,
+                &crate::instructions::load_store::BlockDataTransferParams {
+                    load,
+                    pre_index,
+                    add,
+                    writeback,
+                    rn,
+                    register_list,
+                },
             ),
 
             ArmInstruction::Multiply {
@@ -755,7 +759,7 @@ impl ARM7TDMI {
                     if off & 0x400 != 0 {
                         off |= !0x7FF;
                     }
-                    self.regs.r[14] = pc.wrapping_add(((off << 12) as u32));
+                    self.regs.r[14] = pc.wrapping_add((off << 12) as u32);
                 } else {
                     // Seconda istruzione: PC = LR + (offset << 1), LR = next instruction
                     let lr = self.regs.r[14];
@@ -872,7 +876,7 @@ mod tests {
     fn test_cpu_creation() {
         let cpu = ARM7TDMI::new();
         assert_eq!(cpu.cycles, 0);
-        assert_eq!(cpu.halted, false);
+        assert!(!cpu.halted);
     }
 
     #[test]
@@ -893,7 +897,6 @@ mod tests {
 
         struct TestBus {
             instructions: Vec<u32>,
-            pc: usize,
         }
 
         impl MemoryBus for TestBus {
@@ -919,7 +922,6 @@ mod tests {
         let mut cpu = ARM7TDMI::new();
         let mut bus = TestBus {
             instructions: vec![0xE3A0_002A], // MOV R0, #42
-            pc: 0,
         };
 
         cpu.step(&mut bus);
@@ -1094,7 +1096,7 @@ mod tests {
         cpu.step(&mut bus);
 
         assert_eq!(cpu.regs.r[0], 42);
-        assert_eq!(cpu.regs.flag_z(), false);
+        assert!(!cpu.regs.flag_z());
         assert_eq!(cpu.regs.pc(), 2); // THUMB incrementa di 2
     }
 
@@ -1140,8 +1142,8 @@ mod tests {
         cpu.step(&mut bus);
 
         assert_eq!(cpu.regs.r[2], 30);
-        assert_eq!(cpu.regs.flag_z(), false);
-        assert_eq!(cpu.regs.flag_n(), false);
+        assert!(!cpu.regs.flag_z());
+        assert!(!cpu.regs.flag_n());
     }
 
     #[test]

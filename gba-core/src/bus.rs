@@ -4,6 +4,7 @@ use crate::input::InputController;
 use crate::interrupt::InterruptController;
 use crate::memory::Memory;
 use crate::ppu::PPU;
+use crate::save::SaveController;
 use crate::timer::Timer;
 use gba_arm7tdmi::cpu::MemoryBus;
 
@@ -14,6 +15,7 @@ pub struct Bus {
     pub apu: APU,
     pub timer: Timer,
     pub dma: DMA,
+    pub save: SaveController,
     pub interrupt: InterruptController,
     pub input: InputController,
 }
@@ -26,6 +28,7 @@ impl Bus {
             apu: APU::new(),
             timer: Timer::new(),
             dma: DMA::new(),
+            save: SaveController::new(),
             interrupt: InterruptController::new(),
             input: InputController::new(),
         }
@@ -42,6 +45,11 @@ impl Bus {
 
 impl MemoryBus for Bus {
     fn read_byte(&mut self, addr: u32) -> u8 {
+        // SRAM/Flash (0x0E000000-0x0E00FFFF)
+        if (0x0E000000..=0x0E00FFFF).contains(&addr) {
+            return self.save.read_byte(addr - 0x0E000000);
+        }
+
         // OAM: 0x07000000-0x070003FF
         if (0x07000000..0x07000400).contains(&addr) {
             let offset = (addr - 0x07000000) as usize;
@@ -62,24 +70,6 @@ impl MemoryBus for Bus {
     }
 
     fn read_halfword(&mut self, addr: u32) -> u16 {
-        // OAM
-        if (0x07000000..0x07000400).contains(&addr) {
-            let offset = (addr - 0x07000000) as usize;
-            return self.ppu.read_oam_halfword(offset);
-        }
-
-        // Palette RAM
-        if (0x05000000..0x05000400).contains(&addr) {
-            let offset = (addr - 0x05000000) as usize;
-            return self.ppu.read_palette_halfword(offset);
-        }
-
-        // I/O Registers
-        if (0x04000000..0x04000400).contains(&addr) {
-            return self.read_io_halfword(addr);
-        }
-        self.memory.read_halfword(addr)
-    }
 
     fn read_word(&mut self, addr: u32) -> u32 {
         // OAM
@@ -106,6 +96,12 @@ impl MemoryBus for Bus {
     }
 
     fn write_byte(&mut self, addr: u32, value: u8) {
+        // SRAM/Flash (0x0E000000-0x0E00FFFF)
+        if (0x0E000000..=0x0E00FFFF).contains(&addr) {
+            self.save.write_byte(addr - 0x0E000000, value);
+            return;
+        }
+
         // OAM
         if (0x07000000..0x07000400).contains(&addr) {
             let offset = (addr - 0x07000000) as usize;

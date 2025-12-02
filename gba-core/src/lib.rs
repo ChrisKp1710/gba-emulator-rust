@@ -15,6 +15,10 @@ pub mod interrupt;
 pub mod memory;
 pub mod ppu;
 mod ppu_impl;
+pub mod save;
+mod save_impl;
+#[cfg(test)]
+mod save_tests;
 pub mod timer;
 mod timer_impl;
 #[cfg(test)]

@@ -4,22 +4,23 @@
 
 > **Vuoi modificare...? → Vai in questo file!**
 
-| Cosa Vuoi Fare                    | File da Modificare                            | Stato        | Righe |
-| --------------------------------- | --------------------------------------------- | ------------ | ----- |
-| ✅ Aggiungere istruzione ARM      | `gba-arm7tdmi/src/arm.rs`                     | **Completo** | 249   |
-| ✅ Implementazione ALU ARM        | `gba-arm7tdmi/src/instructions/alu.rs`        | **Completo** | 314   |
-| ✅ Branch ARM (B, BL, BX)         | `gba-arm7tdmi/src/instructions/branch.rs`     | **Completo** | 66    |
-| ✅ Load/Store ARM                 | `gba-arm7tdmi/src/instructions/load_store.rs` | **Completo** | 173   |
-| ✅ Aggiungere istruzione THUMB    | `gba-arm7tdmi/src/thumb.rs`                   | **Completo** | 350+  |
-| ✅ Esecuzione THUMB               | `gba-arm7tdmi/src/cpu.rs` (execute_thumb)     | **Completo** | 450+  |
-| ✅ Modificare registri CPU        | `gba-arm7tdmi/src/registers.rs`               | **Completo** | 381   |
-| ✅ Test CPU                       | `gba-arm7tdmi/src/cpu.rs` (mod tests)         | **10 test**  | 200+  |
-| 💾 Modificare memoria/RAM         | `gba-core/src/memory.rs`                      | Completo     | 250   |
-| 🎨 **Implementare rendering PPU** | `gba-core/src/ppu.rs`                         | **TODO**     | 60    |
-| ⚡ Modificare interrupt           | `gba-core/src/interrupt.rs`                   | Completo     | 70    |
-| 📂 Modificare caricamento ROM     | `gba-core/src/cartridge.rs`                   | Completo     | 80    |
-| 🎮 Modificare interfaccia         | `gba-frontend-sdl2/src/ui.rs`                 | Completo     | 120   |
-| ⌨️ **Collegare input**            | `gba-frontend-sdl2/src/input.rs`              | **TODO**     | 50    |
+| Cosa Vuoi Fare                 | File da Modificare                            | Stato        | Righe |
+| ------------------------------ | --------------------------------------------- | ------------ | ----- |
+| ✅ Aggiungere istruzione ARM   | `gba-arm7tdmi/src/arm.rs`                     | **Completo** | 249   |
+| ✅ Implementazione ALU ARM     | `gba-arm7tdmi/src/instructions/alu.rs`        | **Completo** | 314   |
+| ✅ Branch ARM (B, BL, BX)      | `gba-arm7tdmi/src/instructions/branch.rs`     | **Completo** | 66    |
+| ✅ Load/Store ARM              | `gba-arm7tdmi/src/instructions/load_store.rs` | **Completo** | 173   |
+| ✅ Aggiungere istruzione THUMB | `gba-arm7tdmi/src/thumb.rs`                   | **Completo** | 350+  |
+| ✅ Esecuzione THUMB            | `gba-arm7tdmi/src/cpu.rs` (execute_thumb)     | **Completo** | 450+  |
+| ✅ Modificare registri CPU     | `gba-arm7tdmi/src/registers.rs`               | **Completo** | 381   |
+| ✅ Test CPU                    | `gba-arm7tdmi/src/cpu.rs` (mod tests)         | **10 test**  | 200+  |
+| 💾 Modificare memoria/RAM      | `gba-core/src/memory.rs`                      | Completo     | 250   |
+| ✅ **PPU Mode 3 rendering**    | `gba-core/src/ppu.rs`                         | **Completo** | 200   |
+| ✅ **Test PPU rendering**      | `gba-core/tests/ppu_mode3_test.rs`            | **4 test**   | 75    |
+| ⚡ Modificare interrupt        | `gba-core/src/interrupt.rs`                   | Completo     | 70    |
+| ✅ **Input controller**        | `gba-core/src/input.rs`                       | **Completo** | 130   |
+| 📂 Modificare caricamento ROM  | `gba-core/src/cartridge.rs`                   | Completo     | 80    |
+| 🎮 Modificare interfaccia      | `gba-frontend-sdl2/src/ui.rs`                 | Completo     | 180   |
 
 ---
 
@@ -158,12 +159,20 @@ gba-core/
     │   ├─ rom: Vec<u8>           ← Gioco
     │   └─ sram: Vec<u8>          ← Salvataggi
     │
-    ├── ppu.rs                    ← ⭐ GRAFICA
+    ├── ppu.rs                    ← ⭐ GRAFICA (✅ Mode 3 completo!)
     │   ├─ struct PPU
-    │   ├─ framebuffer            ← Buffer 240x160
-    │   ├─ step()                 ← Avanza rendering
-    │   ├─ render_scanline()      ← Disegna 1 riga
-    │   └─ in_vblank()            ← Controlla VBlank
+    │   ├─ framebuffer: Vec<u16>  ← Buffer RGB555 240x160
+    │   ├─ dispcnt, dispstat      ← I/O registers
+    │   ├─ step(cycles, vram)     ← Avanza rendering
+    │   ├─ render_mode3_scanline()← ✅ Copia VRAM→framebuffer
+    │   ├─ in_vblank()            ← Controlla VBlank
+    │   └─ read/write_register()  ← Accesso I/O
+    │
+    ├── input.rs                  ← ⭐ INPUT (✅ Completo!)
+    │   ├─ struct InputController
+    │   ├─ keyinput: u16          ← KEYINPUT register
+    │   ├─ set_button_*()         ← Imposta stato pulsanti
+    │   └─ read_keyinput()        ← Leggi registro
     │
     ├── interrupt.rs              ← ⭐ INTERRUPT
     │   ├─ struct InterruptController
@@ -215,8 +224,9 @@ gba-frontend-sdl2/
     ├── ui.rs                     ← ⭐ FINESTRA E RENDERING
     │   ├─ fn run()               ← Loop principale UI
     │   ├─ Crea finestra SDL2     ← 720x480 (240x160 x3)
-    │   ├─ Loop eventi            ← Input, ESC per uscire
+    │   ├─ Loop eventi            ← ✅ Input KeyDown/KeyUp
     │   ├─ emulator.run_frame()   ← Esegue 1 frame
+    │   ├─ ✅ RGB555→RGB888       ← Conversione framebuffer
     │   ├─ Copia framebuffer      ← PPU → SDL texture
     │   ├─ Renderizza             ← Mostra su schermo
     │   └─ Limita FPS             ← 60 FPS target

@@ -52,24 +52,37 @@
 
 **Risultato**: La CPU può eseguire codice GBA reale! Tutti i test passano.
 
-### 🚧 Fase 2: Grafica (PROSSIMA)
+### ✅ Fase 2: Grafica Base (COMPLETATA)
 
-- [x] PPU timing base
-- [ ] **Mode 3 rendering** (bitmap 240x160 per test)
+- ✅ PPU timing base
+- ✅ **Mode 3 rendering** (bitmap RGB555 240x160)
+- ✅ **I/O registers** (DISPCNT, DISPSTAT, VCOUNT)
+- ✅ **VBlank interrupt** integrato
+- ✅ **Conversione RGB555→RGB888** per SDL2
+- ✅ **4 test unitari** per rendering
+
+**Risultato**: Il rendering bitmap funziona! Possiamo vedere pixel colorati sullo schermo.
+
+### 🚧 Fase 3: Grafica Avanzata (PROSSIMA)
+
 - [ ] **Mode 0 rendering** (tile-based per Pokémon)
 - [ ] Sprite rendering (OAM)
 - [ ] Background scrolling
 - [ ] Window e effects
+- [ ] Mode 1-2 (affine backgrounds)
 
-**Obiettivo**: Vedere la schermata di gioco!
+**Obiettivo**: Vedere i giochi Pokémon completi!
 
-### 🔜 Fase 3: Input e Gameplay
+### ✅ Fase 3: Input (COMPLETATA)
 
-- [ ] **Input controller** (keyboard → GBA buttons)
+- ✅ **Input controller** (keyboard → GBA buttons)
+- ✅ **KEYINPUT register** (0x04000130)
+- ✅ **D-Pad completo** + A/B/L/R/Start/Select
+- ✅ **SDL2 KeyDown/KeyUp** handling
 - [ ] Mappatura tasti configurabile
 - [ ] Timing input accurato
 
-**Obiettivo**: Poter controllare i giochi!
+**Risultato**: I controlli funzionano! Possiamo interagire con i giochi.
 
 ### 🔜 Fase 4: Audio e Completezza
 
@@ -78,12 +91,16 @@
 - [ ] DMA controller
 - [ ] Timer hardware
 
+**Obiettivo**: Sentire la musica dei giochi!
+
 ### 🔜 Fase 5: Salvataggi
 
 - [ ] SRAM detection
 - [ ] Flash memory
 - [ ] EEPROM
 - [ ] Save states
+
+**Obiettivo**: Salvare i progressi di gioco!
 
 ### 🎯 Fase 6: Ottimizzazione
 

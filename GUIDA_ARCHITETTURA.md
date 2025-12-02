@@ -249,45 +249,51 @@ Step 1.4: Implementa istruzioni THUMB
   └─ Set ridotto, più semplice di ARM
 
 Step 1.5: Test con ARM test suite
-  └─ Verifica che CPU funzioni correttamente
+  └─ Verifica che CPU funzioni correttamente ✅
 ```
 
-### FASE 2: Grafica Base
+### ✅ FASE 2: Grafica Base (COMPLETATA)
 
-**Obiettivo**: Vedere qualcosa sullo schermo
+**Obiettivo**: Vedere qualcosa sullo schermo ✅
 
 ```
-Step 2.1: Implementa Mode 3 (bitmap 240x160)
-  ├─ File: gba-core/src/ppu.rs
-  ├─ Più semplice: VRAM → diretto a schermo
-  └─ Test: ROM che disegna pixel
+Step 2.1: ✅ Implementa Mode 3 (bitmap 240x160)
+  ├─ File: gba-core/src/ppu.rs (~200 righe)
+  ├─ VRAM RGB555 → framebuffer
+  ├─ I/O registers: DISPCNT, DISPSTAT, VCOUNT
+  ├─ VBlank interrupt funzionante
+  ├─ Conversione RGB555→RGB888 per SDL2
+  └─ 4 test unitari passano ✅
 
-Step 2.2: Implementa Mode 0 (tile-based)
+Step 2.2: TODO - Implementa Mode 0 (tile-based)
   ├─ Background layers
   ├─ Tile mapping
   └─ Usato dalla maggior parte dei giochi
 
-Step 2.3: Implementa sprite (OAM)
+Step 2.3: TODO - Implementa sprite (OAM)
   ├─ Lettura OAM
   ├─ Rendering sprite
   └─ Priorità e trasparenza
 ```
 
-### FASE 3: Input e I/O
+### ✅ FASE 3: Input e I/O (COMPLETATA)
 
-**Obiettivo**: Controllare il gioco
+**Obiettivo**: Controllare il gioco ✅
 
 ```
-Step 3.1: Implementa lettura input
-  ├─ File: gba-core/src/bus.rs (I/O registers)
+Step 3.1: ✅ Implementa lettura input
+  ├─ File: gba-core/src/input.rs (~130 righe)
+  ├─ File: gba-core/src/bus.rs (I/O routing)
   ├─ Registro 0x04000130 (KEYINPUT)
-  └─ Mappa tasti SDL → GBA buttons
+  ├─ D-Pad + A/B/L/R/Start/Select
+  ├─ Bit invertiti (0=premuto, 1=rilasciato)
+  └─ SDL2 KeyDown/KeyUp events ✅
 
-Step 3.2: Implementa timer
+Step 3.2: TODO - Implementa timer
   ├─ 4 timer hardware
   └─ Usati per timing e audio
 
-Step 3.3: Implementa DMA
+Step 3.3: TODO - Implementa DMA
   └─ Trasferimenti memoria veloci
 ```
 

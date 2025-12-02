@@ -143,40 +143,48 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 
 ### ✅ Completato
 
-1. Struttura del progetto modulare
-2. Sistema memoria e bus completo
-3. Caricamento ROM e parsing header
-4. PPU base con timing
-5. Frontend SDL2 funzionante
-6. Sistema interrupt base
+1. **CPU ARM7TDMI completa**
+   - ✅ Tutte le istruzioni ARM (40+)
+   - ✅ Tutte le istruzioni THUMB (100+ varianti)
+   - ✅ Pipeline CPU e switch ARM↔THUMB
+   - ✅ 10 test unitari passano
+2. **PPU Mode 3 funzionante**
+   - ✅ Rendering bitmap RGB555 240x160
+   - ✅ I/O registers (DISPCNT, DISPSTAT, VCOUNT)
+   - ✅ VBlank interrupt
+   - ✅ 4 test unitari per rendering
+3. **Input controller completo**
+   - ✅ KEYINPUT register
+   - ✅ D-Pad + A/B/L/R/Start/Select
+   - ✅ SDL2 integration
+4. Struttura del progetto modulare
+5. Sistema memoria e bus completo
+6. Caricamento ROM e parsing header
+7. Frontend SDL2 con conversione RGB555→RGB888
+8. Sistema interrupt completo
 
 ### 🚧 In Corso
 
-1. Implementazione CPU ARM7TDMI completa
-   - [ ] Tutte le istruzioni ARM
-   - [ ] Tutte le istruzioni THUMB
-   - [ ] Pipeline CPU accurata
+1. PPU (Picture Processing Unit) avanzata
+   - [ ] Background rendering (Mode 0 tile-based)
+   - [ ] Sprite rendering (OAM)
+   - [ ] Modalità bitmap Mode 1-2
+   - [ ] Effects (blending, mosaic)
 
 ### 📋 Pianificato
 
-1. PPU (Picture Processing Unit) completa
-
-   - [ ] Background rendering (Mode 0-2)
-   - [ ] Sprite rendering
-   - [ ] Modalità bitmap (Mode 3-5)
-   - [ ] Effects (blending, mosaic)
-
-2. APU (Audio Processing Unit)
+1. APU (Audio Processing Unit)
 
    - [ ] Channel 1-4 (GB compatibili)
    - [ ] DMA audio channels
    - [ ] Audio mixing
 
-3. Input e Periferiche
+2. Periferiche Hardware
 
-   - [ ] Controller input funzionante
    - [ ] Timer hardware
    - [ ] DMA controller
+
+3. Salvataggi
 
 4. Salvataggi
 
@@ -202,37 +210,38 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test
+# Run tutti i test (14 test totali)
 cargo test
 
 # Test CPU ARM7TDMI (10 test unitari)
 cargo test --package gba-arm7tdmi
 
-# Test core emulator
+# Test PPU rendering (4 test unitari)
 cargo test --package gba-core
 ```
 
-### Test CPU - 10/10 Passano ✅
+### Test Suite - 14/14 Passano ✅
 
-La CPU include 10 test unitari che verificano:
-
-**ARM (32-bit):**
+**CPU ARM7TDMI (10 test):**
 
 - ✅ `test_mov_instruction` - MOV con immediato
 - ✅ `test_add_instruction` - ADD tra registri
 - ✅ `test_branch_instruction` - Branch (B)
 - ✅ `test_ldr_str_instructions` - LDR/STR memoria
 - ✅ `test_cpu_creation` e `test_cpu_reset` - Base CPU
+- ✅ `test_thumb_mov_immediate` - THUMB MOV immediato
+- ✅ `test_thumb_add_subtract` - THUMB ADD/SUB registri
+- ✅ `test_thumb_ldr_str` - THUMB LDR/STR con offset
+- ✅ `test_thumb_branch` - THUMB Branch incondizionale
 
-**THUMB (16-bit):**
+**PPU Rendering (4 test):**
 
-- ✅ `test_thumb_mov_immediate` - MOV immediato
-- ✅ `test_thumb_add_subtract` - ADD/SUB registri
-- ✅ `test_thumb_ldr_str` - LDR/STR con offset
-- ✅ `test_thumb_branch` - Branch incondizionale
+- ✅ `test_mode3_rendering` - Pixel colorati RGB555
+- ✅ `test_mode3_full_scanline` - Gradiente rosso
+- ✅ `test_demo_color_gradient` - Gradiente RGB completo
+- ✅ `test_demo_color_bars` - 8 barre colorate verticali
 
 Tutti i test passano con successo verificando la correttezza dell'implementazione.
-cargo test --package gba-core
 
 ```
 

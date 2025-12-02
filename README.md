@@ -21,6 +21,13 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - I/O registers: DISPCNT, DISPSTAT, VCOUNT
   - VBlank interrupt integrato
   - **4 test unitari** per rendering (pixel, gradiente, barre colorate) ✅
+- **✅ PPU Mode 0 Completo** ✨ NUOVO
+  - **4 background layers (BG0-BG3)** con tile 8x8
+  - **Palette RAM** (1KB): 16 colori e 256 colori
+  - **BG Control** (BGxCNT): priority, char/screen base, palette mode
+  - **BG Scrolling** (BGxHOFS/VOFS) per tutti i layer
+  - **Layer compositing** con priority e trasparenza
+  - **7 test unitari** per tile rendering, scrolling, priority ✅
 - **✅ Input Controller Completo**
   - KEYINPUT register (0x04000130)
   - D-Pad, A/B, L/R, Start/Select

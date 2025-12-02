@@ -33,6 +33,12 @@ impl Bus {
 
 impl MemoryBus for Bus {
     fn read_byte(&mut self, addr: u32) -> u8 {
+        // Palette RAM: 0x05000000-0x050003FF
+        if (0x05000000..0x05000400).contains(&addr) {
+            let offset = (addr - 0x05000000) as usize;
+            return self.ppu.read_palette_byte(offset);
+        }
+
         // I/O Registers: 0x04000000-0x040003FE
         if (0x04000000..0x04000400).contains(&addr) {
             return self.read_io_byte(addr);
@@ -41,6 +47,12 @@ impl MemoryBus for Bus {
     }
 
     fn read_halfword(&mut self, addr: u32) -> u16 {
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            let offset = (addr - 0x05000000) as usize;
+            return self.ppu.read_palette_halfword(offset);
+        }
+
         // I/O Registers
         if (0x04000000..0x04000400).contains(&addr) {
             return self.read_io_halfword(addr);
@@ -49,6 +61,13 @@ impl MemoryBus for Bus {
     }
 
     fn read_word(&mut self, addr: u32) -> u32 {
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            let low = self.read_halfword(addr);
+            let high = self.read_halfword(addr + 2);
+            return (low as u32) | ((high as u32) << 16);
+        }
+
         // I/O Registers
         if (0x04000000..0x04000400).contains(&addr) {
             let low = self.read_io_halfword(addr);
@@ -59,6 +78,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_byte(&mut self, addr: u32, value: u8) {
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            let offset = (addr - 0x05000000) as usize;
+            self.ppu.write_palette_byte(offset, value);
+            return;
+        }
+
         // I/O Registers
         if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_byte(addr, value);
@@ -68,6 +94,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_halfword(&mut self, addr: u32, value: u16) {
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            let offset = (addr - 0x05000000) as usize;
+            self.ppu.write_palette_halfword(offset, value);
+            return;
+        }
+
         // I/O Registers
         if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_halfword(addr, value);
@@ -77,6 +110,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_word(&mut self, addr: u32, value: u32) {
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            self.write_halfword(addr, value as u16);
+            self.write_halfword(addr + 2, (value >> 16) as u16);
+            return;
+        }
+
         // I/O Registers
         if (0x04000000..0x04000400).contains(&addr) {
             self.write_io_halfword(addr, value as u16);
@@ -95,6 +135,18 @@ impl Bus {
             0x04000000 => self.ppu.read_register(addr), // DISPCNT
             0x04000004 => self.ppu.read_register(addr), // DISPSTAT
             0x04000006 => self.ppu.read_register(addr), // VCOUNT
+            0x04000008 => self.ppu.read_register(addr), // BG0CNT
+            0x0400000A => self.ppu.read_register(addr), // BG1CNT
+            0x0400000C => self.ppu.read_register(addr), // BG2CNT
+            0x0400000E => self.ppu.read_register(addr), // BG3CNT
+            0x04000010 => self.ppu.read_register(addr), // BG0HOFS
+            0x04000012 => self.ppu.read_register(addr), // BG0VOFS
+            0x04000014 => self.ppu.read_register(addr), // BG1HOFS
+            0x04000016 => self.ppu.read_register(addr), // BG1VOFS
+            0x04000018 => self.ppu.read_register(addr), // BG2HOFS
+            0x0400001A => self.ppu.read_register(addr), // BG2VOFS
+            0x0400001C => self.ppu.read_register(addr), // BG3HOFS
+            0x0400001E => self.ppu.read_register(addr), // BG3VOFS
 
             // Interrupt registers
             0x04000200 => self.interrupt.ie,         // IE
@@ -117,6 +169,18 @@ impl Bus {
             // PPU registers
             0x04000000 => self.ppu.write_register(addr, value), // DISPCNT
             0x04000004 => self.ppu.write_register(addr, value), // DISPSTAT
+            0x04000008 => self.ppu.write_register(addr, value), // BG0CNT
+            0x0400000A => self.ppu.write_register(addr, value), // BG1CNT
+            0x0400000C => self.ppu.write_register(addr, value), // BG2CNT
+            0x0400000E => self.ppu.write_register(addr, value), // BG3CNT
+            0x04000010 => self.ppu.write_register(addr, value), // BG0HOFS
+            0x04000012 => self.ppu.write_register(addr, value), // BG0VOFS
+            0x04000014 => self.ppu.write_register(addr, value), // BG1HOFS
+            0x04000016 => self.ppu.write_register(addr, value), // BG1VOFS
+            0x04000018 => self.ppu.write_register(addr, value), // BG2HOFS
+            0x0400001A => self.ppu.write_register(addr, value), // BG2VOFS
+            0x0400001C => self.ppu.write_register(addr, value), // BG3HOFS
+            0x0400001E => self.ppu.write_register(addr, value), // BG3VOFS
 
             // Interrupt registers
             0x04000200 => self.interrupt.ie = value,

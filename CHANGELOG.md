@@ -5,6 +5,65 @@ Tutte le modifiche notevoli a questo progetto saranno documentate in questo file
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce a [Semantic Versioning](https://semver.org/lang/it/).
 
+## [0.4.0] - 2024-12-02
+
+### ✅ PPU Mode 0 - Tile-Based Rendering
+
+#### Background System Completo
+
+- **✅ 4 Background Layers (BG0-BG3)**:
+
+  - Rendering tile-based con 8x8 pixel tiles
+  - Supporto 16 colori (16x16 palette) e 256 colori (256x1 palette)
+  - Character base: 4 blocchi da 16KB per tile data
+  - Screen base: 32 blocchi da 2KB per tilemap
+  - Screen size: 32x32, 64x32, 32x64, 64x64 tiles
+
+- **✅ BG Control Registers (BGxCNT)**:
+
+  - Priority (0-3) per layer compositing
+  - Palette mode (16 o 256 colori)
+  - Tile flipping (H-flip, V-flip)
+  - Mosaic e wrap support
+
+- **✅ BG Scrolling (BGxHOFS/BGxVOFS)**:
+
+  - Scroll X/Y indipendente per ogni layer
+  - Wrapping automatico a 512 pixel
+
+- **✅ Palette RAM (1KB)**:
+
+  - 512 bytes BG palette (0x05000000-0x050001FF)
+  - 512 bytes OBJ palette (0x05000200-0x050003FF)
+  - Conversione RGB555 corretta
+
+- **✅ Layer Compositing**:
+  - Priority-based rendering (0 = davanti)
+  - Trasparenza (color 0)
+  - 4 layer blending corretto
+
+#### Bus I/O
+
+- **✅ Palette RAM routing** (0x05000000-0x050003FF)
+- **✅ BG registers routing**:
+  - BG0CNT-BG3CNT (0x04000008-0x0400000E)
+  - BG0HOFS-BG3VOFS (0x04000010-0x0400001E)
+
+#### Test e Validazione
+
+- **✅ 7 test unitari PPU** (tutti passano):
+
+  - `test_bg_control_parsing` - Parsing BGxCNT
+  - `test_bg_screen_size` - Dimensioni screen
+  - `test_palette_ram_access` - Lettura/scrittura palette
+  - `test_mode0_simple_tile` - Rendering tile base
+  - `test_mode0_scrolling` - Scrolling funzionante
+  - `test_mode0_priority` - Layer priority
+  - `test_mode0_transparency` - Trasparenza color 0
+
+- **✅ Codice professionale**: 0 warning Clippy strict mode
+- **✅ 21 test totali** passano (10 CPU + 7 PPU + 4 integration)
+
 ## [0.3.1] - 2024-12-02
 
 ### ✅ Code Quality - Pulizia Professionale

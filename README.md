@@ -53,7 +53,7 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - Direct Sound control e output
   - **17 test unitari** per APU completo ✅
 
-- **✅ Timer System Completo** ⏱️ **NUOVO**
+- **✅ Timer System Completo** ⏱️
 
   - **Architettura modulare**: 4 moduli (`timer_impl/`) + test separati
   - **4 Hardware Timers (TM0-TM3)**
@@ -63,6 +63,19 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - Cascade mode (timer chaining)
   - **Memory-mapped I/O**: `0x04000100-0x0400010E`
   - **13 test unitari** per tutti i timer features ✅
+
+- **✅ DMA Controller Completo** 🚀 **NUOVO**
+
+  - **Architettura modulare**: 4 moduli (`dma_impl/`) + test separati
+  - **4 DMA Channels (DMA0-DMA3)**
+    - Source/Destination address control
+    - Transfer modes: 16-bit e 32-bit
+    - Address modes: increment, decrement, fixed, reload
+    - Timing triggers: Immediate, VBlank, HBlank, Special
+    - Repeat mode e IRQ su completamento
+  - **Priority system**: DMA0 (highest) → DMA3 (lowest)
+  - **Memory-mapped I/O**: `0x040000B0-0x040000DE`
+  - **19 test unitari** per tutti i DMA features ✅
 
 - **✅ Input Controller Completo**
   - KEYINPUT register (0x04000130)
@@ -89,7 +102,8 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 
 ### 📋 Pianificato
 
-- **DMA Controller** - Direct Memory Access per trasferimenti veloci
+- **PPU Mode 4/5** - Modi bitmap aggiuntivi
+- **BIOS Calls** - SWI e funzioni BIOS per compatibilità
 - **Save States** - Salvataggio/caricamento stato emulatore
 - **Supporto Salvataggi** - SRAM, Flash, EEPROM per giochi
 - **Ottimizzazioni Avanzate** - JIT compilation, SIMD
@@ -241,11 +255,16 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ 4 hardware timers (TM0-TM3)
    - ✅ Prescaler, cascade mode, IRQ
    - ✅ Test separati: 13 test unitari
-5. **Input controller completo**
+5. **DMA Controller completo** 🚀
+   - ✅ Architettura modulare (4 moduli in dma_impl/)
+   - ✅ 4 DMA channels con priority
+   - ✅ Transfer modes, address control, timing
+   - ✅ Test separati: 19 test unitari
+6. **Input controller completo**
    - ✅ KEYINPUT register
    - ✅ D-Pad + A/B/L/R/Start/Select
    - ✅ SDL2 integration
-6. **Sistema base completo**
+7. **Sistema base completo**
    - ✅ Memoria e bus
    - ✅ Interrupt controller
    - ✅ Caricamento ROM
@@ -261,27 +280,20 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 
 ### 📋 Pianificato
 
-1. **DMA Controller**
-
-   - [ ] 4 DMA channels
-   - [ ] Source/destination control
-   - [ ] Transfer modes
-   - [ ] Timing triggers
-
-2. **Periferiche Avanzate**
+1. **Periferiche Avanzate**
 
    - [ ] Serial communication
    - [ ] RTC (Real Time Clock)
    - [ ] GPIO per accessori
 
-3. **Salvataggi**
+2. **Salvataggi**
 
    - [ ] Save States
    - [ ] SRAM
    - [ ] Flash
    - [ ] EEPROM
 
-4. **Ottimizzazioni**
+3. **Ottimizzazioni**
    - [ ] JIT compilation (opzionale)
    - [ ] SIMD optimizations
    - [ ] Multi-threading
@@ -298,7 +310,7 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test (56 test totali)
+# Run tutti i test (75 test totali)
 cargo test --workspace
 
 # Test CPU ARM7TDMI (10 test unitari)
@@ -313,11 +325,14 @@ cargo test --package gba-core apu
 # Test Timer (13 test unitari)
 cargo test --package gba-core timer
 
+# Test DMA (19 test unitari)
+cargo test --package gba-core dma
+
 # Test integrazione (4 test)
 cargo test --package gba-core --test
 ```
 
-### Test Suite - 56/56 Passano ✅
+### Test Suite - 75/75 Passano ✅
 
 **CPU ARM7TDMI (10 test)** - `cpu_tests.rs`
 
@@ -400,6 +415,39 @@ _Advanced (2 test):_
 - ✅ `test_cascade_mode` - Timer chaining
 - ✅ `test_all_timers` - Tutti e 4 i timer
 - ✅ `test_timer_enable_reloads` - Enable behavior
+
+**DMA Controller (19 test)** - `dma_tests.rs`
+
+_Core Features (8 test):_
+
+- ✅ `test_dma_creation` - DMA initialization
+- ✅ `test_dma_control_register` - Control register parsing
+- ✅ `test_dma_register_write_read` - Register I/O
+- ✅ `test_dma_source_mask` - Source address masking
+- ✅ `test_dma_dest_mask` - Dest address masking
+- ✅ `test_dma_word_count` - Word count handling
+- ✅ `test_dma_irq_flag` - IRQ generation
+- ✅ `test_dma_no_irq_when_disabled` - IRQ control
+
+_Timing Modes (4 test):_
+
+- ✅ `test_dma_timing_enum` - Timing enum parsing
+- ✅ `test_dma_immediate_trigger` - Immediate mode
+- ✅ `test_dma_vblank_trigger` - VBlank trigger
+- ✅ `test_dma_hblank_trigger` - HBlank trigger
+
+_Transfer Modes (5 test):_
+
+- ✅ `test_dma_32bit_transfer` - 32-bit transfer
+- ✅ `test_dma_address_increment` - Address increment
+- ✅ `test_dma_address_decrement` - Address decrement
+- ✅ `test_dma_address_fixed` - Fixed address
+- ✅ `test_dma_repeat_mode` - Repeat mode
+
+_Advanced (2 test):_
+
+- ✅ `test_dma_priority` - Channel priority
+- ✅ `test_dma_reset` - DMA reset
 
 **Integrazione (4 test)** - `tests/`
 

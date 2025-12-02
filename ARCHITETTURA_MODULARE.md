@@ -50,10 +50,18 @@ gba-emulator-rust/
 │   │   │   ├── counter.rs     # (90 lines) - TimerCounter logic
 │   │   │   └── mod.rs         # (89 lines) - Timer struct
 │   │   │
+│   │   ├── dma_impl/      # DMA modularizzato
+│   │   │   ├── constants.rs   # (34 lines) - DMA registers
+│   │   │   ├── types.rs       # (59 lines) - DmaControl, DmaTiming
+│   │   │   ├── channel.rs     # (171 lines) - DmaChannel logic
+│   │   │   └── mod.rs         # (119 lines) - DMA struct
+│   │   │
 │   │   ├── ppu.rs         # (2 lines) - Re-export PPU
 │   │   ├── apu.rs         # (2 lines) - Re-export APU
 │   │   ├── timer.rs       # (2 lines) - Re-export Timer
+│   │   ├── dma.rs         # (2 lines) - Re-export DMA
 │   │   ├── timer_tests.rs # (194 lines) - Timer tests
+│   │   ├── dma_tests.rs   # (300 lines) - DMA tests
 │   │   ├── bus.rs         # (290 lines) - System bus
 │   │   ├── memory.rs      # (310 lines) - Memory system
 │   │   ├── interrupt.rs   # (85 lines) - Interrupts
@@ -82,11 +90,12 @@ gba-emulator-rust/
 | **PPU**    | 6 + tests | 752          | in ppu.rs  | 12   | ✅ Completo |
 | **APU**    | 7 + tests | 952          | separati   | 17   | ✅ Completo |
 | **Timer**  | 4 + tests | 231          | 194        | 13   | ✅ Completo |
+| **DMA**    | 4 + tests | 383          | 300        | 19   | ✅ Completo |
 | **Bus**    | 1         | 290          | -          | 0    | ✅ Stabile  |
 | **Memory** | 1         | 310          | -          | 0    | ✅ Stabile  |
 | **Input**  | 1         | 120          | -          | 0    | ✅ Completo |
 
-**Totale Test Suite: 56 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 4 integration)
+**Totale Test Suite: 75 test** (10 CPU + 12 PPU + 17 APU + 13 Timer + 19 DMA + 4 integration)
 
 ### Dimensione File (Policy: max ~250 righe)
 
@@ -376,4 +385,4 @@ impl TimerControl {
 ---
 
 **Aggiornato:** 2 dicembre 2025  
-**Versione:** v0.6.0 (Timer completo)
+**Versione:** v0.7.0 (DMA completo)

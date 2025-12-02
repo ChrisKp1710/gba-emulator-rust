@@ -19,7 +19,7 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - **Codice professionale**: 0 warning Clippy ✅
 - **✅ PPU (Picture Processing Unit) Completa** 🎨
 
-  - **Architettura modulare**: 8 moduli (`ppu_impl/`) + test separati
+  - **Architettura modulare**: 10 moduli (`ppu_impl/`) + test separati
   - **Mode 0 - Tile Backgrounds**
     - 4 background layers (BG0-BG3) con tile 8x8
     - Palette RAM (1KB): 16 e 256 colori
@@ -30,23 +30,36 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - Rendering RGB555 240x160 pixel
     - I/O registers: DISPCNT, DISPSTAT, VCOUNT
     - VBlank interrupt integrato
-  - **Mode 4 - Bitmap Paletted** 🎨 **NUOVO**
+  - **Mode 4 - Bitmap Paletted** 🎨
     - 8-bit indexed color (256 colori)
     - Risoluzione 240x160 pixel
     - Page flipping (2 frame buffer per double buffering)
     - Frame 0/1 selezionabili via DISPCNT bit 4
-  - **Mode 5 - Bitmap RGB Small** 🎨 **NUOVO**
+  - **Mode 5 - Bitmap RGB Small** 🎨
     - 16-bit RGB555 direct color
     - Risoluzione 160x128 pixel (centrato su 240x160)
     - Page flipping (2 frame buffer)
     - Bordi neri automatici per centering
+  - **Windows System** 🪟 **NUOVO**
+    - WIN0/WIN1: Finestre rettangolari configurabili
+    - WINOBJ: Window da sprite (OBJ window)
+    - WINOUT: Controllo area fuori finestre
+    - Priority: WIN0 > WIN1 > WINOBJ > WINOUT
+    - Horizontal/vertical wrapping support
+    - Per-window layer enable (BG0-3, OBJ, Blending)
+  - **Blending & Effects** ✨ **NUOVO**
+    - Alpha blending: Blend tra due layer (EVA/EVB coefficients)
+    - Brightness increase: Fade to white (EVY coefficient)
+    - Brightness decrease: Fade to black (EVY coefficient)
+    - Target selection per layer (BG0-3, OBJ, backdrop)
+    - RGB555 color math con clamping
   - **Sprite Rendering (OAM)**
     - 128 sprite con OAM 1KB
     - Tutte le dimensioni: 8x8, 16x16, 32x32, 64x64, wide, tall
     - OBJ palette (512 byte): 16 e 256 colori
     - H-flip/V-flip, priority, trasparenza
     - VRAM OBJ tile rendering (0x06010000+)
-  - **22 test unitari** per PPU rendering completo ✅
+  - **50 test unitari** per PPU completo ✅
 
 - **✅ APU (Audio Processing Unit) Completa** 🔊
 

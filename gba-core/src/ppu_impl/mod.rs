@@ -1,5 +1,6 @@
 /// PPU - Picture Processing Unit
 /// Modular implementation
+mod blending;
 mod constants;
 mod mode0;
 mod mode3;
@@ -7,6 +8,7 @@ mod mode4;
 mod mode5;
 mod sprites;
 mod types;
+mod windows;
 
 pub use constants::*;
 pub use sprites::SpriteAttribute;
@@ -42,6 +44,18 @@ pub struct PPU {
 
     /// OAM (Object Attribute Memory - 1KB, 128 sprites)
     pub oam: Vec<u8>,
+
+    /// Window system
+    pub windows: windows::Windows,
+
+    /// Blend control
+    pub blend_control: blending::BlendControl,
+
+    /// Alpha coefficients (BLDALPHA)
+    pub alpha_coefficients: blending::AlphaCoefficients,
+
+    /// Brightness coefficient (BLDY)
+    pub brightness_coeff: u8,
 }
 
 impl PPU {
@@ -57,6 +71,10 @@ impl PPU {
             bg_vofs: [0; 4],
             palette_ram: vec![0; PALETTE_RAM_SIZE],
             oam: vec![0; OAM_SIZE],
+            windows: windows::Windows::new(),
+            blend_control: blending::BlendControl::new(),
+            alpha_coefficients: blending::AlphaCoefficients { eva: 0, evb: 0 },
+            brightness_coeff: 0,
         }
     }
 
@@ -78,6 +96,8 @@ impl PPU {
             BG2VOFS => self.bg_vofs[2],
             BG3HOFS => self.bg_hofs[3],
             BG3VOFS => self.bg_vofs[3],
+            BLDCNT => self.blend_control.to_u16(),
+            BLDALPHA => self.alpha_coefficients.to_u16(),
             _ => 0,
         }
     }
@@ -103,6 +123,39 @@ impl PPU {
             BG2VOFS => self.bg_vofs[2] = value & 0x1FF,
             BG3HOFS => self.bg_hofs[3] = value & 0x1FF,
             BG3VOFS => self.bg_vofs[3] = value & 0x1FF,
+            WIN0H => {
+                let (left, right) = windows::WindowBounds::from_horizontal(value);
+                self.windows.win0.left = left;
+                self.windows.win0.right = right;
+            }
+            WIN1H => {
+                let (left, right) = windows::WindowBounds::from_horizontal(value);
+                self.windows.win1.left = left;
+                self.windows.win1.right = right;
+            }
+            WIN0V => {
+                let (top, bottom) = windows::WindowBounds::from_vertical(value);
+                self.windows.win0.top = top;
+                self.windows.win0.bottom = bottom;
+            }
+            WIN1V => {
+                let (top, bottom) = windows::WindowBounds::from_vertical(value);
+                self.windows.win1.top = top;
+                self.windows.win1.bottom = bottom;
+            }
+            WININ => {
+                self.windows.win0_control = windows::WindowControl::from_u8((value & 0xFF) as u8);
+                self.windows.win1_control =
+                    windows::WindowControl::from_u8(((value >> 8) & 0xFF) as u8);
+            }
+            WINOUT => {
+                self.windows.winout_control = windows::WindowControl::from_u8((value & 0xFF) as u8);
+                self.windows.winobj_control =
+                    windows::WindowControl::from_u8(((value >> 8) & 0xFF) as u8);
+            }
+            BLDCNT => self.blend_control = blending::BlendControl::from_u16(value),
+            BLDALPHA => self.alpha_coefficients = blending::AlphaCoefficients::from_u16(value),
+            BLDY => self.brightness_coeff = (value & 0x1F).min(16) as u8,
             _ => {}
         }
     }

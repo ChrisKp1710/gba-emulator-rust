@@ -24,6 +24,19 @@ pub const BG2VOFS: u32 = 0x0400001A;
 pub const BG3HOFS: u32 = 0x0400001C;
 pub const BG3VOFS: u32 = 0x0400001E;
 
+/// Window Registers
+pub const WIN0H: u32 = 0x04000040; // WIN0 Horizontal
+pub const WIN1H: u32 = 0x04000042; // WIN1 Horizontal
+pub const WIN0V: u32 = 0x04000044; // WIN0 Vertical
+pub const WIN1V: u32 = 0x04000046; // WIN1 Vertical
+pub const WININ: u32 = 0x04000048; // WIN0/WIN1 Inside Control
+pub const WINOUT: u32 = 0x0400004A; // Outside/OBJ Window Control
+
+/// Blending Registers
+pub const BLDCNT: u32 = 0x04000050; // Blend Control
+pub const BLDALPHA: u32 = 0x04000052; // Alpha Coefficients
+pub const BLDY: u32 = 0x04000054; // Brightness Coefficient
+
 /// Palette RAM: 0x05000000-0x050003FF (1KB)
 pub const PALETTE_RAM_SIZE: usize = 0x400;
 pub const BG_PALETTE_SIZE: usize = 0x200;

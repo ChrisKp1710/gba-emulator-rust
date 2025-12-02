@@ -3,6 +3,7 @@ use crate::input::InputController;
 use crate::interrupt::InterruptController;
 use crate::memory::Memory;
 use crate::ppu::PPU;
+use crate::timer::Timer;
 use gba_arm7tdmi::cpu::MemoryBus;
 
 /// Bus principale del sistema GBA
@@ -10,6 +11,7 @@ pub struct Bus {
     pub memory: Memory,
     pub ppu: PPU,
     pub apu: APU,
+    pub timer: Timer,
     pub interrupt: InterruptController,
     pub input: InputController,
 }
@@ -20,6 +22,7 @@ impl Bus {
             memory: Memory::new(),
             ppu: PPU::new(),
             apu: APU::new(),
+            timer: Timer::new(),
             interrupt: InterruptController::new(),
             input: InputController::new(),
         }
@@ -202,6 +205,9 @@ impl Bus {
             // APU registers (0x04000060-0x040000AE)
             0x04000060..=0x040000AE => self.apu.read_halfword(addr),
 
+            // Timer registers (0x04000100-0x0400010E)
+            0x04000100..=0x0400010E => self.timer.read_register(addr),
+
             _ => {
                 // Altri I/O non implementati
                 0
@@ -235,6 +241,9 @@ impl Bus {
 
             // APU registers (0x04000060-0x040000AE)
             0x04000060..=0x040000AE => self.apu.write_halfword(addr, value),
+
+            // Timer registers (0x04000100-0x0400010E)
+            0x04000100..=0x0400010E => self.timer.write_register(addr, value),
 
             _ => {
                 // Altri I/O non implementati

@@ -9,6 +9,9 @@ pub mod memory;
 pub mod ppu;
 mod ppu_impl;
 pub mod timer;
+mod timer_impl;
+#[cfg(test)]
+mod timer_tests;
 
 pub use bus::Bus;
 pub use cartridge::Cartridge;

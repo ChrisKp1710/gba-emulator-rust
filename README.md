@@ -41,11 +41,12 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 
 ### 🚧 In Sviluppo
 
-- **PPU Advanced Modes**
-  - Mode 0 (tile-based) per giochi Pokémon
+- **PPU Advanced Features**
   - Mode 1-2 (affine backgrounds)
-  - Sprite rendering (OAM)
+  - Mode 4-5 (bitmap paletted)
+  - **Sprite rendering (OAM)** - Oggetti e personaggi
   - Window effects
+  - Blending avanzato (alpha, brightness)
 - **Audio (APU)** - Sistema audio completo
 - **Save States** - Salvataggio/caricamento stato
 - **Supporto Salvataggi** - SRAM, Flash, EEPROM

@@ -1,5 +1,5 @@
 /// PPU Blending - Alpha blending and brightness effects
-/// 
+///
 /// GBA supports 3 blending modes:
 /// - Mode 0: None (disabled)
 /// - Mode 1: Alpha blending (blend two layers)
@@ -158,11 +158,11 @@ pub fn brightness_increase(color: u16, evy: u8) -> u16 {
     let g = (g + ((31 - g) * evy as u32) / 16).min(31);
     let b = (b + ((31 - b) * evy as u32) / 16).min(31);
 
+    ((b << 10) | (g << 5) | r) as u16
 }
 
 /// Decrease brightness (fade to black)
 #[allow(dead_code)]
-pub fn brightness_decrease(color: u16, evy: u8) -> u16 {
 pub fn brightness_decrease(color: u16, evy: u8) -> u16 {
     let r = (color & 0x1F) as u32;
     let g = ((color >> 5) & 0x1F) as u32;
@@ -184,8 +184,14 @@ mod tests {
     fn test_blend_mode_parsing() {
         assert_eq!(BlendMode::from_u16(0b00000000), BlendMode::None);
         assert_eq!(BlendMode::from_u16(0b01000000), BlendMode::AlphaBlend);
-        assert_eq!(BlendMode::from_u16(0b10000000), BlendMode::BrightnessIncrease);
-        assert_eq!(BlendMode::from_u16(0b11000000), BlendMode::BrightnessDecrease);
+        assert_eq!(
+            BlendMode::from_u16(0b10000000),
+            BlendMode::BrightnessIncrease
+        );
+        assert_eq!(
+            BlendMode::from_u16(0b11000000),
+            BlendMode::BrightnessDecrease
+        );
     }
 
     #[test]
@@ -227,7 +233,7 @@ mod tests {
         let red = 0x001F;
         let blue = 0x7C00;
         let result = alpha_blend(red, blue, 8, 8);
-        
+
         // Expected: (31*8 + 0*8)/16 = 15 for red
         //           (0*8 + 31*8)/16 = 15 for blue
         let expected_r = 15;
@@ -242,7 +248,7 @@ mod tests {
         let green = 0x03E0;
         let red = 0x001F;
         let result = alpha_blend(green, red, 12, 4);
-        
+
         // Red: (0*12 + 31*4)/16 = 7
         // Green: (31*12 + 0*4)/16 = 23
         assert_eq!(result & 0x1F, 7);
@@ -292,7 +298,7 @@ mod tests {
     #[test]
     fn test_brightness_gradient() {
         let color = 0x03E0; // Green
-        
+
         // EVY=0 should not change color
         assert_eq!(brightness_increase(color, 0), color);
         assert_eq!(brightness_decrease(color, 0), color);

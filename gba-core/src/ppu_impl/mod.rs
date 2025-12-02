@@ -1,5 +1,6 @@
 /// PPU - Picture Processing Unit
 /// Modular implementation
+mod affine;
 mod blending;
 mod constants;
 mod mode0;
@@ -56,6 +57,12 @@ pub struct PPU {
 
     /// Brightness coefficient (BLDY)
     pub brightness_coeff: u8,
+
+    /// Affine parameters for BG2
+    pub bg2_affine: affine::AffineParams,
+
+    /// Affine parameters for BG3
+    pub bg3_affine: affine::AffineParams,
 }
 
 impl PPU {
@@ -75,6 +82,8 @@ impl PPU {
             blend_control: blending::BlendControl::new(),
             alpha_coefficients: blending::AlphaCoefficients { eva: 0, evb: 0 },
             brightness_coeff: 0,
+            bg2_affine: affine::AffineParams::new(),
+            bg3_affine: affine::AffineParams::new(),
         }
     }
 
@@ -96,6 +105,18 @@ impl PPU {
             BG2VOFS => self.bg_vofs[2],
             BG3HOFS => self.bg_hofs[3],
             BG3VOFS => self.bg_vofs[3],
+            BG2PA => self.bg2_affine.matrix.pa as u16,
+            BG2PB => self.bg2_affine.matrix.pb as u16,
+            BG2PC => self.bg2_affine.matrix.pc as u16,
+            BG2PD => self.bg2_affine.matrix.pd as u16,
+            BG2X => (self.bg2_affine.ref_x & 0xFFFF) as u16,
+            BG2Y => (self.bg2_affine.ref_y & 0xFFFF) as u16,
+            BG3PA => self.bg3_affine.matrix.pa as u16,
+            BG3PB => self.bg3_affine.matrix.pb as u16,
+            BG3PC => self.bg3_affine.matrix.pc as u16,
+            BG3PD => self.bg3_affine.matrix.pd as u16,
+            BG3X => (self.bg3_affine.ref_x & 0xFFFF) as u16,
+            BG3Y => (self.bg3_affine.ref_y & 0xFFFF) as u16,
             BLDCNT => self.blend_control.to_u16(),
             BLDALPHA => self.alpha_coefficients.to_u16(),
             _ => 0,
@@ -123,6 +144,50 @@ impl PPU {
             BG2VOFS => self.bg_vofs[2] = value & 0x1FF,
             BG3HOFS => self.bg_hofs[3] = value & 0x1FF,
             BG3VOFS => self.bg_vofs[3] = value & 0x1FF,
+            BG2PA => self.bg2_affine.matrix.pa = value as i16,
+            BG2PB => self.bg2_affine.matrix.pb = value as i16,
+            BG2PC => self.bg2_affine.matrix.pc = value as i16,
+            BG2PD => self.bg2_affine.matrix.pd = value as i16,
+            0x04000028 => {
+                // BG2X lower 16 bits
+                self.bg2_affine.ref_x = (self.bg2_affine.ref_x & !0xFFFF) | (value as i32 & 0xFFFF);
+            }
+            0x0400002A => {
+                // BG2X upper 12 bits (sign-extended)
+                let upper = ((value as i32) << 20) >> 4;
+                self.bg2_affine.ref_x = (self.bg2_affine.ref_x & 0xFFFF) | upper;
+            }
+            0x0400002C => {
+                // BG2Y lower 16 bits
+                self.bg2_affine.ref_y = (self.bg2_affine.ref_y & !0xFFFF) | (value as i32 & 0xFFFF);
+            }
+            0x0400002E => {
+                // BG2Y upper 12 bits (sign-extended)
+                let upper = ((value as i32) << 20) >> 4;
+                self.bg2_affine.ref_y = (self.bg2_affine.ref_y & 0xFFFF) | upper;
+            }
+            BG3PA => self.bg3_affine.matrix.pa = value as i16,
+            BG3PB => self.bg3_affine.matrix.pb = value as i16,
+            BG3PC => self.bg3_affine.matrix.pc = value as i16,
+            BG3PD => self.bg3_affine.matrix.pd = value as i16,
+            0x04000038 => {
+                // BG3X lower 16 bits
+                self.bg3_affine.ref_x = (self.bg3_affine.ref_x & !0xFFFF) | (value as i32 & 0xFFFF);
+            }
+            0x0400003A => {
+                // BG3X upper 12 bits
+                let upper = ((value as i32) << 20) >> 4;
+                self.bg3_affine.ref_x = (self.bg3_affine.ref_x & 0xFFFF) | upper;
+            }
+            0x0400003C => {
+                // BG3Y lower 16 bits
+                self.bg3_affine.ref_y = (self.bg3_affine.ref_y & !0xFFFF) | (value as i32 & 0xFFFF);
+            }
+            0x0400003E => {
+                // BG3Y upper 12 bits
+                let upper = ((value as i32) << 20) >> 4;
+                self.bg3_affine.ref_y = (self.bg3_affine.ref_y & 0xFFFF) | upper;
+            }
             WIN0H => {
                 let (left, right) = windows::WindowBounds::from_horizontal(value);
                 self.windows.win0.left = left;

@@ -24,6 +24,21 @@ pub const BG2VOFS: u32 = 0x0400001A;
 pub const BG3HOFS: u32 = 0x0400001C;
 pub const BG3VOFS: u32 = 0x0400001E;
 
+/// Affine Background Registers (BG2/BG3 in Mode 1-2)
+pub const BG2PA: u32 = 0x04000020; // BG2 Rotation/Scaling PA
+pub const BG2PB: u32 = 0x04000022; // BG2 Rotation/Scaling PB
+pub const BG2PC: u32 = 0x04000024; // BG2 Rotation/Scaling PC
+pub const BG2PD: u32 = 0x04000026; // BG2 Rotation/Scaling PD
+pub const BG2X: u32 = 0x04000028; // BG2 Reference Point X
+pub const BG2Y: u32 = 0x0400002C; // BG2 Reference Point Y
+
+pub const BG3PA: u32 = 0x04000030; // BG3 Rotation/Scaling PA
+pub const BG3PB: u32 = 0x04000032; // BG3 Rotation/Scaling PB
+pub const BG3PC: u32 = 0x04000034; // BG3 Rotation/Scaling PC
+pub const BG3PD: u32 = 0x04000036; // BG3 Rotation/Scaling PD
+pub const BG3X: u32 = 0x04000038; // BG3 Reference Point X
+pub const BG3Y: u32 = 0x0400003C; // BG3 Reference Point Y
+
 /// Window Registers
 pub const WIN0H: u32 = 0x04000040; // WIN0 Horizontal
 pub const WIN1H: u32 = 0x04000042; // WIN1 Horizontal

@@ -33,6 +33,12 @@ impl Bus {
 
 impl MemoryBus for Bus {
     fn read_byte(&mut self, addr: u32) -> u8 {
+        // OAM: 0x07000000-0x070003FF
+        if (0x07000000..0x07000400).contains(&addr) {
+            let offset = (addr - 0x07000000) as usize;
+            return self.ppu.read_oam_byte(offset);
+        }
+
         // Palette RAM: 0x05000000-0x050003FF
         if (0x05000000..0x05000400).contains(&addr) {
             let offset = (addr - 0x05000000) as usize;
@@ -47,6 +53,12 @@ impl MemoryBus for Bus {
     }
 
     fn read_halfword(&mut self, addr: u32) -> u16 {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            let offset = (addr - 0x07000000) as usize;
+            return self.ppu.read_oam_halfword(offset);
+        }
+
         // Palette RAM
         if (0x05000000..0x05000400).contains(&addr) {
             let offset = (addr - 0x05000000) as usize;
@@ -61,6 +73,13 @@ impl MemoryBus for Bus {
     }
 
     fn read_word(&mut self, addr: u32) -> u32 {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            let low = self.read_halfword(addr);
+            let high = self.read_halfword(addr + 2);
+            return (low as u32) | ((high as u32) << 16);
+        }
+
         // Palette RAM
         if (0x05000000..0x05000400).contains(&addr) {
             let low = self.read_halfword(addr);
@@ -78,6 +97,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_byte(&mut self, addr: u32, value: u8) {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            let offset = (addr - 0x07000000) as usize;
+            self.ppu.write_oam_byte(offset, value);
+            return;
+        }
+
         // Palette RAM
         if (0x05000000..0x05000400).contains(&addr) {
             let offset = (addr - 0x05000000) as usize;
@@ -94,6 +120,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_halfword(&mut self, addr: u32, value: u16) {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            let offset = (addr - 0x07000000) as usize;
+            self.ppu.write_oam_halfword(offset, value);
+            return;
+        }
+
         // Palette RAM
         if (0x05000000..0x05000400).contains(&addr) {
             let offset = (addr - 0x05000000) as usize;
@@ -110,6 +143,13 @@ impl MemoryBus for Bus {
     }
 
     fn write_word(&mut self, addr: u32, value: u32) {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            self.write_halfword(addr, value as u16);
+            self.write_halfword(addr + 2, (value >> 16) as u16);
+            return;
+        }
+
         // Palette RAM
         if (0x05000000..0x05000400).contains(&addr) {
             self.write_halfword(addr, value as u16);

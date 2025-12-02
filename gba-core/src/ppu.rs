@@ -35,9 +35,17 @@ pub const BG3VOFS: u32 = 0x0400001E;
 /// - OBJ Palette: 0x05000200-0x050003FF (512 bytes = 256 colori)
 pub const PALETTE_RAM_SIZE: usize = 0x400;
 pub const BG_PALETTE_SIZE: usize = 0x200;
+pub const OBJ_PALETTE_OFFSET: usize = 0x200;
+
+/// OAM (Object Attribute Memory): 0x07000000-0x070003FF (1KB)
+/// 128 sprites * 8 bytes = 1024 bytes
+pub const OAM_SIZE: usize = 0x400;
+pub const OAM_SPRITE_COUNT: usize = 128;
 
 /// VRAM base per tile data e map data
 pub const VRAM_BASE: u32 = 0x06000000;
+/// OBJ tiles in VRAM: 0x06010000-0x06017FFF (32KB in Mode 0-2)
+pub const OBJ_TILE_BASE: usize = 0x10000;
 
 /// Display modes
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -97,6 +105,111 @@ impl BgControl {
     }
 }
 
+/// Sprite Attribute (OAM entry)
+#[derive(Debug, Clone, Copy)]
+pub struct SpriteAttribute {
+    // Attribute 0 (16-bit)
+    pub y: u8,             // Bits 0-7: Y coordinate
+    pub obj_mode: u8,      // Bits 8-9: Object mode (normal, affine, disabled, double)
+    pub gfx_mode: u8,      // Bits 10-11: GFX mode (normal, alpha, window)
+    pub mosaic: bool,      // Bit 12: Mosaic
+    pub palette_256: bool, // Bit 13: 256 colors (true) or 16 colors (false)
+    pub shape: u8,         // Bits 14-15: Shape (square, wide, tall)
+
+    // Attribute 1 (16-bit)
+    pub x: u16,       // Bits 0-8: X coordinate (9 bits)
+    pub h_flip: bool, // Bit 12: Horizontal flip (regular sprites)
+    pub v_flip: bool, // Bit 13: Vertical flip (regular sprites)
+    pub size: u8,     // Bits 14-15: Size
+
+    // Attribute 2 (16-bit)
+    pub tile_index: u16,  // Bits 0-9: Tile number
+    pub priority: u8,     // Bits 10-11: Priority
+    pub palette_bank: u8, // Bits 12-15: Palette bank (16-color mode)
+}
+
+impl SpriteAttribute {
+    /// Crea sprite da 6 bytes OAM (primi 6 byte, gli ultimi 2 sono rotation/scaling)
+    pub fn from_oam_bytes(bytes: &[u8]) -> Self {
+        if bytes.len() < 6 {
+            return Self::default();
+        }
+
+        let attr0 = (bytes[0] as u16) | ((bytes[1] as u16) << 8);
+        let attr1 = (bytes[2] as u16) | ((bytes[3] as u16) << 8);
+        let attr2 = (bytes[4] as u16) | ((bytes[5] as u16) << 8);
+
+        Self {
+            // Attr 0
+            y: (attr0 & 0xFF) as u8,
+            obj_mode: ((attr0 >> 8) & 0x3) as u8,
+            gfx_mode: ((attr0 >> 10) & 0x3) as u8,
+            mosaic: (attr0 & (1 << 12)) != 0,
+            palette_256: (attr0 & (1 << 13)) != 0,
+            shape: ((attr0 >> 14) & 0x3) as u8,
+
+            // Attr 1
+            x: attr1 & 0x1FF,
+            h_flip: (attr1 & (1 << 12)) != 0,
+            v_flip: (attr1 & (1 << 13)) != 0,
+            size: ((attr1 >> 14) & 0x3) as u8,
+
+            // Attr 2
+            tile_index: attr2 & 0x3FF,
+            priority: ((attr2 >> 10) & 0x3) as u8,
+            palette_bank: ((attr2 >> 12) & 0xF) as u8,
+        }
+    }
+
+    /// Ottieni dimensioni sprite in pixel (width, height)
+    pub fn get_size(&self) -> (usize, usize) {
+        match (self.shape, self.size) {
+            // Square
+            (0, 0) => (8, 8),
+            (0, 1) => (16, 16),
+            (0, 2) => (32, 32),
+            (0, 3) => (64, 64),
+            // Wide (horizontal)
+            (1, 0) => (16, 8),
+            (1, 1) => (32, 8),
+            (1, 2) => (32, 16),
+            (1, 3) => (64, 32),
+            // Tall (vertical)
+            (2, 0) => (8, 16),
+            (2, 1) => (8, 32),
+            (2, 2) => (16, 32),
+            (2, 3) => (32, 64),
+            _ => (8, 8),
+        }
+    }
+
+    /// Verifica se lo sprite è visibile
+    pub fn is_visible(&self) -> bool {
+        // obj_mode == 2 significa disabilitato
+        self.obj_mode != 2
+    }
+}
+
+impl Default for SpriteAttribute {
+    fn default() -> Self {
+        Self {
+            y: 0,
+            obj_mode: 2, // Disabled
+            gfx_mode: 0,
+            mosaic: false,
+            palette_256: false,
+            shape: 0,
+            x: 0,
+            h_flip: false,
+            v_flip: false,
+            size: 0,
+            tile_index: 0,
+            priority: 0,
+            palette_bank: 0,
+        }
+    }
+}
+
 pub struct PPU {
     /// Frame buffer (RGB555 format: xBBBBBGGGGGRRRRR)
     pub framebuffer: Vec<u16>,
@@ -124,6 +237,9 @@ pub struct PPU {
 
     /// Palette RAM (1KB: 512 bytes BG + 512 bytes OBJ)
     pub palette_ram: Vec<u8>,
+
+    /// OAM (Object Attribute Memory - 1KB, 128 sprites)
+    pub oam: Vec<u8>,
 }
 
 impl PPU {
@@ -138,6 +254,7 @@ impl PPU {
             bg_hofs: [0; 4],
             bg_vofs: [0; 4],
             palette_ram: vec![0; PALETTE_RAM_SIZE],
+            oam: vec![0; OAM_SIZE],
         }
     }
 
@@ -262,6 +379,11 @@ impl PPU {
             _ => {
                 // TODO: Altri mode (tiled)
             }
+        }
+
+        // Renderizza sprite se abilitati (bit 12 di DISPCNT)
+        if (self.dispcnt & (1 << 12)) != 0 {
+            self.render_sprites_scanline(vram);
         }
     }
 
@@ -469,6 +591,49 @@ impl PPU {
         }
     }
 
+    /// Leggi byte da OAM
+    pub fn read_oam_byte(&self, offset: usize) -> u8 {
+        if offset < OAM_SIZE {
+            self.oam[offset]
+        } else {
+            0
+        }
+    }
+
+    /// Scrivi byte in OAM
+    pub fn write_oam_byte(&mut self, offset: usize, value: u8) {
+        if offset < OAM_SIZE {
+            self.oam[offset] = value;
+        }
+    }
+
+    /// Leggi halfword da OAM
+    pub fn read_oam_halfword(&self, offset: usize) -> u16 {
+        if offset + 1 < OAM_SIZE {
+            (self.oam[offset] as u16) | ((self.oam[offset + 1] as u16) << 8)
+        } else {
+            0
+        }
+    }
+
+    /// Scrivi halfword in OAM
+    pub fn write_oam_halfword(&mut self, offset: usize, value: u16) {
+        if offset + 1 < OAM_SIZE {
+            self.oam[offset] = (value & 0xFF) as u8;
+            self.oam[offset + 1] = ((value >> 8) & 0xFF) as u8;
+        }
+    }
+
+    /// Leggi sprite da OAM (index 0-127)
+    pub fn read_sprite(&self, index: usize) -> SpriteAttribute {
+        if index < OAM_SPRITE_COUNT {
+            let offset = index * 8;
+            SpriteAttribute::from_oam_bytes(&self.oam[offset..offset + 6])
+        } else {
+            SpriteAttribute::default()
+        }
+    }
+
     /// Renderizza scanline in Mode 3 (bitmap 16-bit)
     fn render_mode3_scanline(&mut self, vram: &[u8]) {
         // Mode 3: VRAM è array di u16 (RGB555)
@@ -488,6 +653,145 @@ impl PPU {
                 // Fuori bounds, pixel nero
                 self.framebuffer[line * SCREEN_WIDTH + x] = 0;
             }
+        }
+    }
+
+    /// Renderizza sprites per la scanline corrente
+    fn render_sprites_scanline(&mut self, vram: &[u8]) {
+        let line = self.scanline as usize;
+
+        // Buffer sprite priorità (color, priority, has_sprite)
+        let mut sprite_buffer: Vec<(u16, u8, bool)> = vec![(0, 4, false); SCREEN_WIDTH];
+
+        // Renderizza sprite in ordine inverso (priorità: index più alto = dietro)
+        for sprite_idx in (0..OAM_SPRITE_COUNT).rev() {
+            let sprite = self.read_sprite(sprite_idx);
+
+            if !sprite.is_visible() {
+                continue;
+            }
+
+            let (sprite_width, sprite_height) = sprite.get_size();
+            let sprite_y = sprite.y as usize;
+
+            // Verifica se sprite interseca questa scanline
+            let y_in_sprite = if line >= sprite_y {
+                line.wrapping_sub(sprite_y)
+            } else {
+                // Wrap-around per Y > 160
+                line.wrapping_add(256).wrapping_sub(sprite_y)
+            };
+
+            if y_in_sprite >= sprite_height {
+                continue; // Sprite non in questa scanline
+            }
+
+            // Applica V-flip
+            let actual_y = if sprite.v_flip {
+                sprite_height - 1 - y_in_sprite
+            } else {
+                y_in_sprite
+            };
+
+            // Renderizza ogni pixel dello sprite
+            for sprite_x in 0..sprite_width {
+                let screen_x = (sprite.x as usize).wrapping_add(sprite_x) & 0x1FF;
+
+                if screen_x >= SCREEN_WIDTH {
+                    continue;
+                }
+
+                // Applica H-flip
+                let actual_x = if sprite.h_flip {
+                    sprite_width - 1 - sprite_x
+                } else {
+                    sprite_x
+                };
+
+                // Calcola tile e pixel all'interno del tile
+                let tiles_per_row = sprite_width / 8;
+                let tile_x = actual_x / 8;
+                let tile_y = actual_y / 8;
+                let pixel_x = actual_x % 8;
+                let pixel_y = actual_y % 8;
+
+                // Calcola tile index
+                let tile_offset = if sprite.palette_256 {
+                    // 256 colori: tile sequenziali
+                    tile_y * tiles_per_row + tile_x
+                } else {
+                    // 16 colori: tile in layout 2D
+                    tile_y * 32 + tile_x
+                };
+
+                let tile_num = sprite.tile_index as usize + tile_offset;
+
+                // Leggi pixel dal tile in VRAM OBJ
+                let palette_index = if sprite.palette_256 {
+                    // 256 colori: 64 byte per tile
+                    let tile_addr = OBJ_TILE_BASE + tile_num * 64;
+                    let pixel_addr = tile_addr + pixel_y * 8 + pixel_x;
+                    if pixel_addr < vram.len() {
+                        vram[pixel_addr] as usize
+                    } else {
+                        0
+                    }
+                } else {
+                    // 16 colori: 32 byte per tile
+                    let tile_addr = OBJ_TILE_BASE + tile_num * 32;
+                    let pixel_addr = tile_addr + pixel_y * 4 + pixel_x / 2;
+                    if pixel_addr < vram.len() {
+                        let byte = vram[pixel_addr];
+                        if pixel_x & 1 == 0 {
+                            (byte & 0xF) as usize
+                        } else {
+                            ((byte >> 4) & 0xF) as usize
+                        }
+                    } else {
+                        0
+                    }
+                };
+
+                // Color 0 = trasparente
+                if palette_index == 0 {
+                    continue;
+                }
+
+                // Lookup nella palette OBJ
+                let color = if sprite.palette_256 {
+                    // 256 colori
+                    self.read_obj_palette(palette_index)
+                } else {
+                    // 16 colori
+                    let palette_offset = sprite.palette_bank as usize * 16 + palette_index;
+                    self.read_obj_palette(palette_offset)
+                };
+
+                // Controlla priority: sprite con priority più bassa (numero) = davanti
+                let (_, current_priority, has_sprite) = sprite_buffer[screen_x];
+                if !has_sprite || sprite.priority <= current_priority {
+                    sprite_buffer[screen_x] = (color, sprite.priority, true);
+                }
+            }
+        }
+
+        // Composite sprite sul framebuffer
+        for (x, &(sprite_color, _sprite_priority, has_sprite)) in sprite_buffer.iter().enumerate() {
+            if has_sprite {
+                // TODO: Considera priority BG vs OBJ
+                // Per ora sprite sempre sopra background
+                self.framebuffer[line * SCREEN_WIDTH + x] = sprite_color;
+            }
+        }
+    }
+
+    /// Leggi colore RGB555 dalla palette OBJ
+    fn read_obj_palette(&self, index: usize) -> u16 {
+        let addr = OBJ_PALETTE_OFFSET + index * 2;
+        if addr + 1 < PALETTE_RAM_SIZE {
+            (self.palette_ram[addr] as u16) | ((self.palette_ram[addr + 1] as u16) << 8)
+        } else {
+            0
         }
     }
 
@@ -727,6 +1031,155 @@ mod tests {
         assert_eq!(ppu.framebuffer[1], 0x0000);
         // Pixel 2: nero/trasparente
         assert_eq!(ppu.framebuffer[2], 0x0000);
+        // Pixel 3: bianco
+        assert_eq!(ppu.framebuffer[3], 0x7FFF, "Pixel 3 should be white");
+    }
+
+    #[test]
+    fn test_sprite_attribute_parsing() {
+        // Crea OAM bytes per uno sprite 16x16 a (50,30)
+        let oam = vec![
+            30,   // Attr0 low: Y=30
+            0x00, // Attr0 high: normal mode, no mosaic, 16 colors, square
+            50,   // Attr1 low: X=50
+            0x40, // Attr1 high: size=1, no flip
+            0x05, // Attr2 low: tile=5
+            0x20, // Attr2 high: priority=0, palette=2
+        ];
+
+        let sprite = SpriteAttribute::from_oam_bytes(&oam);
+
+        assert_eq!(sprite.y, 30);
+        assert_eq!(sprite.x, 50);
+        assert_eq!(sprite.tile_index, 5);
+        assert_eq!(sprite.priority, 0);
+        assert_eq!(sprite.palette_bank, 2);
+        assert_eq!(sprite.get_size(), (16, 16));
+        assert!(sprite.is_visible());
+    }
+
+    #[test]
+    fn test_sprite_sizes() {
+        // Test array di configurazioni (shape, size, expected_dimensions)
+        let test_cases = [
+            // Square
+            (0, 0, (8, 8)),
+            (0, 1, (16, 16)),
+            (0, 2, (32, 32)),
+            (0, 3, (64, 64)),
+            // Wide
+            (1, 0, (16, 8)),
+            (1, 1, (32, 8)),
+            (1, 2, (32, 16)),
+            (1, 3, (64, 32)),
+            // Tall
+            (2, 0, (8, 16)),
+            (2, 1, (8, 32)),
+            (2, 2, (16, 32)),
+            (2, 3, (32, 64)),
+        ];
+
+        for (shape, size, expected) in test_cases {
+            let sprite = SpriteAttribute {
+                shape,
+                size,
+                ..SpriteAttribute::default()
+            };
+            assert_eq!(
+                sprite.get_size(),
+                expected,
+                "Failed for shape={}, size={}",
+                shape,
+                size
+            );
+        }
+    }
+
+    #[test]
+    fn test_oam_read_write() {
+        let mut ppu = PPU::new();
+
+        // Scrivi sprite in OAM slot 0
+        ppu.write_oam_halfword(0, 0x0050); // Attr0: Y=80, mode=0
+        ppu.write_oam_halfword(2, 0x0064); // Attr1: X=100
+        ppu.write_oam_halfword(4, 0x000A); // Attr2: tile=10
+
+        // Leggi sprite
+        let sprite = ppu.read_sprite(0);
+        assert_eq!(sprite.y, 80);
+        assert_eq!(sprite.x, 100);
+        assert_eq!(sprite.tile_index, 10);
+    }
+
+    #[test]
+    fn test_sprite_rendering_simple() {
+        let mut ppu = PPU::new();
+
+        // Setup Mode 0 con sprite abilitati
+        ppu.dispcnt = 0x1000; // Bit 12: OBJ enable
+
+        // OBJ palette: colore 1 = blu
+        ppu.palette_ram[OBJ_PALETTE_OFFSET + 2] = 0x00; // Low
+        ppu.palette_ram[OBJ_PALETTE_OFFSET + 3] = 0x7C; // High (0x7C00 = blu)
+
+        // Crea sprite 8x8 a posizione (10, 5)
+        ppu.write_oam_halfword(0, 0x0005); // Y=5
+        ppu.write_oam_halfword(2, 0x000A); // X=10
+        ppu.write_oam_halfword(4, 0x0000); // Tile=0, priority=0
+
+        // VRAM: tile sprite con pixel blu (index 1)
+        let mut vram = vec![0u8; 96 * 1024];
+        let tile_offset = OBJ_TILE_BASE;
+        vram.iter_mut()
+            .skip(tile_offset)
+            .take(32)
+            .for_each(|v| *v = 0x11);
+
+        // Renderizza scanline 5 (dove lo sprite è visibile)
+        ppu.scanline = 5;
+        ppu.render_sprites_scanline(&vram);
+
+        // Verifica pixel blu a X=10
+        assert_eq!(
+            ppu.framebuffer[5 * SCREEN_WIDTH + 10],
+            0x7C00,
+            "Sprite pixel should be blue"
+        );
+        assert_eq!(
+            ppu.framebuffer[5 * SCREEN_WIDTH + 17],
+            0x7C00,
+            "Sprite extends to X=17"
+        );
+    }
+
+    #[test]
+    fn test_sprite_transparency() {
+        let mut ppu = PPU::new();
+
+        ppu.dispcnt = 0x1000; // OBJ enable
+
+        // OBJ palette
+        ppu.palette_ram[OBJ_PALETTE_OFFSET + 2] = 0xFF;
+        ppu.palette_ram[OBJ_PALETTE_OFFSET + 3] = 0x7F; // Bianco
+
+        // Sprite 8x8 a (0, 0)
+        ppu.write_oam_halfword(0, 0x0000); // Y=0
+        ppu.write_oam_halfword(2, 0x0000); // X=0
+        ppu.write_oam_halfword(4, 0x0000); // Tile=0
+
+        // VRAM: tile con pattern trasparente/opaco
+        let mut vram = vec![0u8; 96 * 1024];
+        let tile_offset = OBJ_TILE_BASE;
+        vram[tile_offset] = 0x01; // Pixel 0=1 (bianco), pixel 1=0 (trasparente)
+        vram[tile_offset + 1] = 0x10; // Pixel 2=0, pixel 3=1
+
+        ppu.scanline = 0;
+        ppu.render_sprites_scanline(&vram);
+
+        // Pixel 0: bianco
+        assert_eq!(ppu.framebuffer[0], 0x7FFF);
+        // Pixel 1: trasparente (dovrebbe essere 0 = background)
+        assert_eq!(ppu.framebuffer[1], 0x0000);
         // Pixel 3: bianco
         assert_eq!(ppu.framebuffer[3], 0x7FFF);
     }

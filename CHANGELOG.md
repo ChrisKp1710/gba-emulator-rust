@@ -5,6 +5,61 @@ Tutte le modifiche notevoli a questo progetto saranno documentate in questo file
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce a [Semantic Versioning](https://semver.org/lang/it/).
 
+## [0.5.0] - 2024-12-02
+
+### ✅ OAM - Sprite Rendering Completo
+
+#### Object Attribute Memory
+
+- **✅ OAM (1KB)**: 128 sprite \* 8 byte
+
+  - Struct `SpriteAttribute` con parsing OAM bytes
+  - Lettura/scrittura OAM (0x07000000-0x070003FF)
+  - Bus routing per OAM memory
+
+- **✅ Sprite Sizes**: Tutte le dimensioni supportate
+
+  - Square: 8x8, 16x16, 32x32, 64x64
+  - Wide: 16x8, 32x8, 32x16, 64x32
+  - Tall: 8x16, 8x32, 16x32, 32x64
+
+- **✅ Sprite Attributes**:
+
+  - Position (X, Y) con wrapping
+  - Tile index (0-1023)
+  - Priority (0-3)
+  - Palette mode (16 o 256 colori)
+  - H-flip e V-flip
+  - OBJ mode (normal, affine, disabled, double)
+  - GFX mode (normal, alpha, window)
+
+- **✅ Sprite Rendering**:
+
+  - Decodifica tile da VRAM OBJ (0x06010000+)
+  - Supporto 16 colori (16 palette \* 16 colori)
+  - Supporto 256 colori (palette unica)
+  - OBJ Palette RAM (0x05000200-0x050003FF)
+  - Trasparenza (color 0)
+  - Flipping H/V funzionante
+
+- **✅ Sprite Compositing**:
+  - Priority-based rendering (0 = davanti)
+  - Blending con background (sprite sempre sopra per ora)
+  - 128 sprite renderizzabili
+
+#### Test e Validazione
+
+- **✅ 5 nuovi test OAM** (tutti passano):
+
+  - `test_sprite_attribute_parsing` - Parsing OAM bytes
+  - `test_sprite_sizes` - Tutte le dimensioni
+  - `test_oam_read_write` - Lettura/scrittura OAM
+  - `test_sprite_rendering_simple` - Rendering base
+  - `test_sprite_transparency` - Trasparenza
+
+- **✅ Codice professionale**: 0 warning Clippy strict mode
+- **✅ 26 test totali** passano (10 CPU + 12 PPU + 4 integration)
+
 ## [0.4.0] - 2024-12-02
 
 ### ✅ PPU Mode 0 - Tile-Based Rendering

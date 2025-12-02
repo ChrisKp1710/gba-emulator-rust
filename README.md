@@ -227,17 +227,20 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test (14 test totali)
+# Run tutti i test (26 test totali)
 cargo test
 
 # Test CPU ARM7TDMI (10 test unitari)
 cargo test --package gba-arm7tdmi
 
-# Test PPU rendering (4 test unitari)
-cargo test --package gba-core
+# Test PPU (12 test unitari: Mode 0 + Sprites)
+cargo test --package gba-core ppu
+
+# Test integrazione (4 test unitari)
+cargo test --package gba-core --test integration_tests
 ```
 
-### Test Suite - 14/14 Passano ✅
+### Test Suite - 26/26 Passano ✅
 
 **CPU ARM7TDMI (10 test):**
 
@@ -251,14 +254,34 @@ cargo test --package gba-core
 - ✅ `test_thumb_ldr_str` - THUMB LDR/STR con offset
 - ✅ `test_thumb_branch` - THUMB Branch incondizionale
 
-**PPU Rendering (4 test):**
+**PPU Rendering (12 test):**
 
-- ✅ `test_mode3_rendering` - Pixel colorati RGB555
-- ✅ `test_mode3_full_scanline` - Gradiente rosso
-- ✅ `test_demo_color_gradient` - Gradiente RGB completo
-- ✅ `test_demo_color_bars` - 8 barre colorate verticali
+_Mode 0 - Tile Backgrounds (7 test):_
 
-Tutti i test passano con successo verificando la correttezza dell'implementazione.
+- ✅ `test_mode0_simple_tile` - Rendering tile 8x8 base
+- ✅ `test_mode0_scrolling` - Scrolling BG layers
+- ✅ `test_mode0_priority` - Priority tra layers
+- ✅ `test_mode0_transparency` - Trasparenza color 0
+- ✅ `test_bg_control_parsing` - Parsing BGxCNT
+- ✅ `test_bg_screen_size` - Dimensioni screen base
+- ✅ `test_palette_ram_access` - Lettura/scrittura palette
+
+_Sprite Rendering (5 test):_
+
+- ✅ `test_sprite_attribute_parsing` - Parsing OAM bytes
+- ✅ `test_sprite_sizes` - Tutte le 12 dimensioni sprite
+- ✅ `test_oam_read_write` - Lettura/scrittura OAM
+- ✅ `test_sprite_rendering_simple` - Rendering sprite 8x8
+- ✅ `test_sprite_transparency` - Trasparenza sprite (color 0)
+
+**Integrazione (4 test):**
+
+- ✅ `test_load_rom` - Caricamento ROM in memoria
+- ✅ `test_basic_execution` - Esecuzione istruzioni base
+- ✅ `test_interrupt_handling` - Gestione interrupts
+- ✅ `test_memory_mirroring` - Mirroring BIOS/WRAM
+
+Tutti i test passano con 0 warning Clippy strict mode.
 
 ```
 

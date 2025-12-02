@@ -70,6 +70,22 @@ impl MemoryBus for Bus {
     }
 
     fn read_halfword(&mut self, addr: u32) -> u16 {
+        // OAM
+        if (0x07000000..0x07000400).contains(&addr) {
+            return self.ppu.read_oam_halfword((addr - 0x07000000) as usize);
+        }
+
+        // Palette RAM
+        if (0x05000000..0x05000400).contains(&addr) {
+            return self.ppu.read_palette_halfword((addr - 0x05000000) as usize);
+        }
+
+        // I/O Registers
+        if (0x04000000..0x04000400).contains(&addr) {
+            return self.read_io_halfword(addr);
+        }
+        self.memory.read_halfword(addr)
+    }
 
     fn read_word(&mut self, addr: u32) -> u32 {
         // OAM

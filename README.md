@@ -95,6 +95,30 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - RLUnComp: Run-Length decompression (WRAM/VRAM)
   - **21 test unitari** per tutte le BIOS functions ✅
 
+- **✅ Save System Completo** 💾 **NUOVO**
+
+  - **Architettura modulare**: 6 moduli (`save_impl/`) + test separati
+  - **Auto-Detection** 🔍
+    - Scansione ROM per identificatori (SRAM_V, FLASH_V, EEPROM_V, etc.)
+    - Dimensione EEPROM automatica (ROM >16MB → 8KB, else 512B)
+  - **SRAM (32-64KB)** 📝
+    - Battery-backed read/write semplice
+    - Wraparound automatico, clear, load data
+  - **Flash (64-128KB)** ⚡
+    - State machine con chip ID, sector erase (4KB)
+    - Bank switching per Flash 128KB (2 banks × 64KB)
+    - Chip IDs: Macronix, Panasonic, Atmel, Sanyo
+  - **EEPROM (512B-8KB)** 🔌
+    - Protocollo seriale bit-by-bit via DMA
+    - Trasferimenti 64-bit (8 byte blocks)
+    - Address bits: 6 (512B) o 14 (8KB)
+  - **File Persistence** 📂
+    - Auto-save ogni frame se modificato
+    - File `.sav` nella stessa directory della ROM
+    - Load automatico all'avvio
+  - **Memory mapping**: `0x0E000000-0x0E00FFFF`
+  - **23 test unitari** per tutti i save types ✅
+
 - **✅ Input Controller Completo**
   - KEYINPUT register (0x04000130)
   - D-Pad, A/B, L/R, Start/Select
@@ -114,16 +138,16 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 
 - **PPU Advanced Features**
   - Mode 1-2 (affine backgrounds)
-  - Mode 4-5 (bitmap paletted)
+  - Mode 4-5 (bitmap paletted) - **IN PIANIFICAZIONE** 🎯
   - Window effects
   - Blending avanzato (alpha, brightness)
 
 ### 📋 Pianificato
 
-- **PPU Mode 4/5** - Modi bitmap paletted per grafica avanzata
-- **Save System** - SRAM/Flash/EEPROM per persistenza giochi
+- **PPU Mode 4/5** - Modi bitmap paletted (240x160 256 colori, 160x128 16-bit)
+- **Windows & Blending** - WIN0/WIN1/OBJ/OUT, alpha, brightness
+- **Affine Backgrounds** - BG2/BG3 con rotazione/scaling
 - **Save States** - Salvataggio/caricamento stato emulatore completo
-- **Supporto Salvataggi** - SRAM, Flash, EEPROM per giochi
 - **Ottimizzazioni Avanzate** - JIT compilation, SIMD
 
 ## 🏗️ Architettura
@@ -137,11 +161,15 @@ gba-emulator-rust/
 │   │   ├── ppu_impl/   # PPU modularizzata (6 moduli)
 │   │   ├── apu_impl/   # APU modularizzata (7 moduli)
 │   │   ├── timer_impl/ # Timer modularizzato (4 moduli)
+│   │   ├── dma_impl/   # DMA modularizzato (4 moduli)
+│   │   ├── bios_impl/  # BIOS modularizzato (3 moduli)
+│   │   ├── save_impl/  # Save System modularizzato (6 moduli)
 │   │   ├── ppu.rs      # Re-export PPU
 │   │   ├── apu.rs      # Re-export APU
 │   │   ├── timer.rs    # Re-export Timer
 │   │   ├── dma.rs      # Re-export DMA
 │   │   ├── bios.rs     # Re-export BIOS
+│   │   ├── save.rs     # Re-export Save
 │   │   ├── bus.rs      # System bus e I/O mapping
 │   │   ├── memory.rs   # Memory management
 │   │   └── ...

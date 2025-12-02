@@ -14,20 +14,29 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - Tutti i 19 formati THUMB implementati
   - Switch ARM↔THUMB funzionante
   - Condition codes, barrel shifter, flag NZCV
-  - 10 test unitari che verificano correttezza
+  - **10 test unitari** che verificano correttezza ✅
+- **✅ PPU Mode 3 Funzionante**
+  - Rendering bitmap RGB555 240x160 pixel
+  - I/O registers: DISPCNT, DISPSTAT, VCOUNT
+  - VBlank interrupt integrato
+  - **4 test unitari** per rendering (pixel, gradiente, barre colorate) ✅
+- **✅ Input Controller Completo**
+  - KEYINPUT register (0x04000130)
+  - D-Pad, A/B, L/R, Start/Select
+  - Mappatura SDL2 completa
 - **✅ Sistema Memoria Completo** - Memory mapping accurato per tutte le regioni GBA
 - **✅ Sistema Interrupt** - Controller interrupt con IE/IF/IME
 - **✅ Caricamento ROM** - Supporto completo con parsing header
-- **✅ Frontend SDL2** - Interfaccia grafica 60 FPS
+- **✅ Frontend SDL2** - Interfaccia grafica 60 FPS con conversione RGB555→RGB888
 - **✅ Ottimizzazione Massima** - LTO fat, single codegen unit, strip
 
 ### 🚧 In Sviluppo
 
-- **PPU Rendering** - Timing implementato, rendering da completare
-  - Mode 3 (bitmap) per test
+- **PPU Advanced Modes**
   - Mode 0 (tile-based) per giochi Pokémon
+  - Mode 1-2 (affine backgrounds)
   - Sprite rendering (OAM)
-- **Input Controller** - Mappatura keyboard → GBA buttons
+  - Window effects
 - **Audio (APU)** - Sistema audio completo
 - **Save States** - Salvataggio/caricamento stato
 - **Supporto Salvataggi** - SRAM, Flash, EEPROM

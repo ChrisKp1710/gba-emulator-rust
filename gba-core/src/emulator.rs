@@ -78,8 +78,13 @@ impl GbaEmulator {
             let cycles = self.cpu.step(&mut self.bus);
             frame_cycles += cycles;
             
-            // Step PPU
-            self.bus.ppu.step(cycles);
+            // Step PPU con accesso alla VRAM
+            let vram_ptr = self.bus.memory.vram.as_ptr();
+            let vram_len = self.bus.memory.vram.len();
+            unsafe {
+                let vram_slice = std::slice::from_raw_parts(vram_ptr, vram_len);
+                self.bus.ppu.step(cycles, vram_slice);
+            }
             
             // Gestione interrupt VBlank
             if self.bus.ppu.in_vblank() && self.bus.ppu.scanline == 160 {
@@ -96,6 +101,11 @@ impl GbaEmulator {
     /// Ottieni il framebuffer corrente
     pub fn framebuffer(&self) -> &[u16] {
         &self.bus.ppu.framebuffer
+    }
+    
+    /// Ottieni riferimento mutabile all'input controller
+    pub fn input_mut(&mut self) -> &mut crate::input::InputController {
+        &mut self.bus.input
     }
 }
 

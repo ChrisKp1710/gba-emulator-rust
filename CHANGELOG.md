@@ -5,6 +5,50 @@ Tutte le modifiche notevoli a questo progetto saranno documentate in questo file
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.0.0/),
 e questo progetto aderisce a [Semantic Versioning](https://semver.org/lang/it/).
 
+## [0.3.0] - 2024-12-02
+
+### ✅ Completato - Graphics & Input
+
+#### PPU (Picture Processing Unit)
+
+- ✅ **Mode 3 Rendering** in `ppu.rs` (~200 righe):
+  - Rendering bitmap RGB555 240x160
+  - Metodo `render_mode3_scanline()` per copia VRAM→framebuffer
+  - DisplayMode enum (Mode 0-5 supportati)
+  - I/O registers: DISPCNT, DISPSTAT, VCOUNT
+  - Timing: 960 cicli/scanline, 227 scanline/frame
+  - VBlank interrupt integrato
+
+#### Bus I/O
+
+- ✅ **I/O Register Routing** in `bus.rs`:
+  - `read_io_halfword()` e `write_io_halfword()` (~100 righe)
+  - PPU registers: 0x04000000-0x04000006
+  - Interrupt registers: 0x04000200-0x04000208
+  - Input register: 0x04000130 (KEYINPUT)
+
+#### Input Controller
+
+- ✅ **InputController** in `input.rs` (~130 righe):
+  - KEYINPUT register (bit invertiti: 0=premuto, 1=rilasciato)
+  - D-Pad completo (Up, Down, Left, Right)
+  - Pulsanti: A, B, L, R, Start, Select
+  - Integrazione SDL2 con KeyDown/KeyUp events
+
+#### SDL2 Frontend
+
+- ✅ **Conversione Framebuffer** in `ui.rs`:
+  - RGB555→RGB888 per SDL2 texture
+  - Espansione bit corretta: `r8 = (r5 << 3) | (r5 >> 2)`
+  - Mapping tastiera completo (frecce, Z/X, A/S, Enter/Backspace)
+
+#### Testing
+
+- ✅ **PPU Tests** in `ppu_mode3_test.rs` (2 test):
+  - `test_mode3_rendering`: Pixel colorati (rosso, verde, blu, bianco)
+  - `test_mode3_full_scanline`: Gradiente rosso
+  - Totale: 12 test (10 CPU + 2 PPU) - Tutti passano ✅
+
 ## [0.2.0] - 2024-12-02
 
 ### ✅ Completato - CPU ARM7TDMI Funzionante

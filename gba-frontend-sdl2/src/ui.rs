@@ -28,9 +28,9 @@ pub fn run(mut emulator: GbaEmulator) -> Result<()> {
     let mut canvas = window.into_canvas().accelerated().build()?;
     let texture_creator = canvas.texture_creator();
     
-    // Crea texture per il framebuffer
+    // Crea texture per il framebuffer (RGB888 per compatibilità)
     let mut texture = texture_creator.create_texture_streaming(
-        PixelFormatEnum::RGB565,
+        PixelFormatEnum::RGB888,
         SCREEN_WIDTH,
         SCREEN_HEIGHT,
     )?;
@@ -83,6 +83,42 @@ pub fn run(mut emulator: GbaEmulator) -> Result<()> {
                     log::info!("Load State (not implemented yet)");
                 }
                 
+                // Gestione input GBA - Pressione
+                Event::KeyDown { keycode: Some(key), .. } => {
+                    let input = emulator.input_mut();
+                    match key {
+                        Keycode::Up => input.set_dpad_up(true),
+                        Keycode::Down => input.set_dpad_down(true),
+                        Keycode::Left => input.set_dpad_left(true),
+                        Keycode::Right => input.set_dpad_right(true),
+                        Keycode::Z => input.set_button_a(true),
+                        Keycode::X => input.set_button_b(true),
+                        Keycode::A => input.set_button_l(true),
+                        Keycode::S => input.set_button_r(true),
+                        Keycode::Return => input.set_button_start(true),
+                        Keycode::Backspace => input.set_button_select(true),
+                        _ => {}
+                    }
+                }
+                
+                // Gestione input GBA - Rilascio
+                Event::KeyUp { keycode: Some(key), .. } => {
+                    let input = emulator.input_mut();
+                    match key {
+                        Keycode::Up => input.set_dpad_up(false),
+                        Keycode::Down => input.set_dpad_down(false),
+                        Keycode::Left => input.set_dpad_left(false),
+                        Keycode::Right => input.set_dpad_right(false),
+                        Keycode::Z => input.set_button_a(false),
+                        Keycode::X => input.set_button_b(false),
+                        Keycode::A => input.set_button_l(false),
+                        Keycode::S => input.set_button_r(false),
+                        Keycode::Return => input.set_button_start(false),
+                        Keycode::Backspace => input.set_button_select(false),
+                        _ => {}
+                    }
+                }
+                
                 _ => {}
             }
         }
@@ -90,14 +126,29 @@ pub fn run(mut emulator: GbaEmulator) -> Result<()> {
         // Esegui frame emulatore
         emulator.run_frame();
         
-        // Aggiorna texture con framebuffer
-        let framebuffer = emulator.framebuffer();
-        texture.update(None, unsafe {
-            std::slice::from_raw_parts(
-                framebuffer.as_ptr() as *const u8,
-                framebuffer.len() * 2,
-            )
-        }, SCREEN_WIDTH as usize * 2)?;
+        // Converti framebuffer RGB555 -> RGB888
+        let framebuffer_rgb555 = emulator.framebuffer();
+        let mut framebuffer_rgb888 = vec![0u8; (SCREEN_WIDTH * SCREEN_HEIGHT * 3) as usize];
+        
+        for (i, &pixel) in framebuffer_rgb555.iter().enumerate() {
+            // Estrai componenti RGB555 (5-5-5 bit)
+            let r5 = ((pixel >> 10) & 0x1F) as u8;
+            let g5 = ((pixel >> 5) & 0x1F) as u8;
+            let b5 = (pixel & 0x1F) as u8;
+            
+            // Converti a RGB888 (8-8-8 bit) con espansione
+            let r8 = (r5 << 3) | (r5 >> 2);
+            let g8 = (g5 << 3) | (g5 >> 2);
+            let b8 = (b5 << 3) | (b5 >> 2);
+            
+            // Scrivi pixel in formato RGB888
+            framebuffer_rgb888[i * 3] = r8;
+            framebuffer_rgb888[i * 3 + 1] = g8;
+            framebuffer_rgb888[i * 3 + 2] = b8;
+        }
+        
+        // Aggiorna texture con framebuffer convertito
+        texture.update(None, &framebuffer_rgb888, SCREEN_WIDTH as usize * 3)?;
         
         // Rendering
         canvas.clear();

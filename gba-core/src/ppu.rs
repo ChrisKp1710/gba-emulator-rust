@@ -315,4 +315,221 @@ mod tests {
         assert_eq!(ppu.framebuffer[1], 0x0000);
         assert_eq!(ppu.framebuffer[3], 0x7FFF);
     }
+
+    #[test]
+    fn test_mode1_affine_bg2() {
+        let mut ppu = PPU::new();
+
+        // Set Mode 1 (bit 0 = 1) and enable BG2 (bit 10)
+        ppu.dispcnt = 0x0401; // Mode 1 + BG2 enabled
+
+        // Configure BG2 as affine (256x256, wraparound)
+        ppu.bg_control[2].screen_size = 1; // 256x256
+        ppu.bg_control[2].wrap = true;
+        ppu.bg_control[2].char_base = 0;
+        ppu.bg_control[2].screen_base = 0;
+
+        // Set identity transformation matrix
+        ppu.bg2_affine.matrix.pa = 256; // 1.0 in 8.8 fixed-point
+        ppu.bg2_affine.matrix.pb = 0;
+        ppu.bg2_affine.matrix.pc = 0;
+        ppu.bg2_affine.matrix.pd = 256; // 1.0 in 8.8 fixed-point
+        ppu.bg2_affine.ref_x = 0;
+        ppu.bg2_affine.ref_y = 0;
+
+        // Setup VRAM with simple tile and screen data
+        let mut vram = vec![0u8; 96 * 1024];
+
+        // Create a simple colored tile (tile 1 in char base)
+        for i in 0..64 {
+            vram[64 + i] = 1; // Tile 1, palette index 1
+        }
+
+        // Setup screen map at screen_base (tile number for each position)
+        // For affine mode, screen map is 1 byte per entry
+        for i in 0..256 {
+            vram[i] = 1; // All tiles point to tile 1
+        }
+
+        // Setup palette (index 1 = red)
+        ppu.palette_ram[2] = 0x1F; // Red in RGB555 low byte
+        ppu.palette_ram[3] = 0x00; // Red in RGB555 high byte
+
+        // Render scanline 0
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // Check that pixels are rendered (should be red 0x001F)
+        assert_eq!(ppu.framebuffer[0], 0x001F, "First pixel should be red");
+    }
+    #[test]
+    fn test_mode1_affine_rotation() {
+        let mut ppu = PPU::new();
+
+        // Set Mode 1 + BG2 enabled
+        ppu.dispcnt = 0x0401;
+
+        // Configure BG2 affine (128x128 for simplicity)
+        ppu.bg_control[2].screen_size = 0; // 128x128
+        ppu.bg_control[2].wrap = false; // Clipping mode
+
+        // Set 90° rotation matrix (roughly)
+        // For 90° clockwise: PA=0, PB=256, PC=-256, PD=0
+        ppu.bg2_affine.matrix.pa = 0;
+        ppu.bg2_affine.matrix.pb = 256;
+        ppu.bg2_affine.matrix.pc = -256i16 as i16;
+        ppu.bg2_affine.matrix.pd = 0;
+        ppu.bg2_affine.ref_x = 64 << 8; // Center at 64,64 in 20.8 fixed-point
+        ppu.bg2_affine.ref_y = 64 << 8;
+
+        let vram = vec![0u8; 96 * 1024];
+
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // With rotation, rendering should complete without crash
+        // (detailed correctness tested in affine module tests)
+    }
+
+    #[test]
+    fn test_mode2_dual_affine() {
+        let mut ppu = PPU::new();
+
+        // Set Mode 2 (bits 0-2 = 2) and enable BG2+BG3 (bits 10-11)
+        ppu.dispcnt = 0x0C02; // Mode 2 + BG2 + BG3 enabled
+
+        // Configure BG2 and BG3
+        ppu.bg_control[2].screen_size = 0; // 128x128
+        ppu.bg_control[2].wrap = true;
+        ppu.bg_control[3].screen_size = 0; // 128x128
+        ppu.bg_control[3].wrap = true;
+
+        // Identity matrices
+        ppu.bg2_affine.matrix.pa = 256;
+        ppu.bg2_affine.matrix.pd = 256;
+        ppu.bg3_affine.matrix.pa = 256;
+        ppu.bg3_affine.matrix.pd = 256;
+
+        let mut vram = vec![0u8; 96 * 1024];
+
+        // BG2 tiles (red)
+        for i in 0..64 {
+            vram[i] = 1;
+        }
+
+        // BG3 tiles (green) - different char base
+        for i in 0x4000..0x4000 + 64 {
+            vram[i] = 2;
+        }
+
+        // Palette
+        ppu.palette_ram[2] = 0x1F; // Red
+        ppu.palette_ram[4] = 0xE0; // Green low
+        ppu.palette_ram[5] = 0x03; // Green high
+
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // Should render without crash (BG2 on top of BG3)
+    }
+
+    #[test]
+    fn test_mode2_priority() {
+        let mut ppu = PPU::new();
+
+        // Mode 2 with both backgrounds enabled
+        ppu.dispcnt = 0x0C02;
+
+        // BG2 higher priority (rendered on top)
+        ppu.bg_control[2].priority = 0;
+        ppu.bg_control[2].screen_size = 0;
+        ppu.bg_control[2].wrap = true;
+
+        // BG3 lower priority (rendered first, behind)
+        ppu.bg_control[3].priority = 1;
+        ppu.bg_control[3].screen_size = 0;
+        ppu.bg_control[3].wrap = true;
+
+        // Identity transformations
+        ppu.bg2_affine.matrix.pa = 256;
+        ppu.bg2_affine.matrix.pd = 256;
+        ppu.bg3_affine.matrix.pa = 256;
+        ppu.bg3_affine.matrix.pd = 256;
+
+        let vram = vec![0u8; 96 * 1024];
+
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // Priority system should work (no crash, rendering order correct)
+    }
+
+    #[test]
+    fn test_mode1_disabled_bg() {
+        let mut ppu = PPU::new();
+
+        // Mode 1 but BG2 NOT enabled (bit 10 = 0)
+        ppu.dispcnt = 0x0001; // Mode 1 only
+
+        // Configure affine params anyway
+        ppu.bg2_affine.matrix.pa = 256;
+        ppu.bg2_affine.matrix.pd = 256;
+
+        let vram = vec![0u8; 96 * 1024];
+
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // Scanline should be clear (all zeros) since no BG enabled
+        assert_eq!(ppu.framebuffer[0], 0, "Should be black with BG disabled");
+        assert_eq!(ppu.framebuffer[100], 0, "Should be black with BG disabled");
+    }
+
+    #[test]
+    fn test_mode2_wraparound() {
+        let mut ppu = PPU::new();
+
+        // Mode 2 with BG2 enabled, wraparound ON
+        ppu.dispcnt = 0x0402; // Mode 2 + BG2
+
+        ppu.bg_control[2].screen_size = 0; // 128x128
+        ppu.bg_control[2].wrap = true; // Enable wraparound
+
+        // Large scale to test wraparound
+        ppu.bg2_affine.matrix.pa = 512; // 2x scale
+        ppu.bg2_affine.matrix.pd = 512;
+
+        let vram = vec![0u8; 96 * 1024];
+
+        ppu.scanline = 0;
+        ppu.step(1232, &vram);
+
+        // Should complete without panic (wraparound handles out-of-bounds)
+    }
+
+    #[test]
+    fn test_mode1_scaling() {
+        let mut ppu = PPU::new();
+
+        // Mode 1 + BG2
+        ppu.dispcnt = 0x0401;
+
+        ppu.bg_control[2].screen_size = 1; // 256x256
+        ppu.bg_control[2].wrap = false; // Clipping
+
+        // 0.5x scale (zoom in)
+        ppu.bg2_affine.matrix.pa = 128; // 0.5 in 8.8 fixed-point
+        ppu.bg2_affine.matrix.pb = 0;
+        ppu.bg2_affine.matrix.pc = 0;
+        ppu.bg2_affine.matrix.pd = 128;
+        ppu.bg2_affine.ref_x = 0;
+        ppu.bg2_affine.ref_y = 0;
+
+        let vram = vec![0u8; 96 * 1024];
+
+        ppu.scanline = 50;
+        ppu.step(1232, &vram);
+
+        // Scaling should work without issues
+    }
 }

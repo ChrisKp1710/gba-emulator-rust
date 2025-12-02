@@ -314,8 +314,88 @@ impl PPU {
                     frame_select,
                 );
             }
-            _ => {
-                // TODO: Mode 1, 2 (affine backgrounds)
+            DisplayMode::Mode1 => {
+                // Mode 1: BG0, BG1 = regular tile, BG2 = affine
+                // For simplicity, render affine BG2 only (most games use this)
+                // TODO: Full Mode0-style layer compositing with BG0/BG1
+                
+                // Clear scanline first
+                let line_start = self.scanline as usize * constants::SCREEN_WIDTH;
+                for i in 0..constants::SCREEN_WIDTH {
+                    self.framebuffer[line_start + i] = 0;
+                }
+
+                // Render BG2 (affine) if enabled (bit 10 of DISPCNT)
+                if (self.dispcnt & (1 << 10)) != 0 {
+                    let bg_size = self.bg_control[2].get_affine_size();
+                    let char_base = (self.bg_control[2].char_base as usize) * 0x4000;
+                    let screen_base = (self.bg_control[2].screen_base as usize) * 0x800;
+                    let wraparound = self.bg_control[2].wrap;
+
+                    affine::render_affine_scanline(
+                        &mut self.framebuffer,
+                        self.scanline as usize,
+                        constants::SCREEN_WIDTH,
+                        bg_size,
+                        wraparound,
+                        vram,
+                        &self.palette_ram,
+                        char_base,
+                        screen_base,
+                        &self.bg2_affine,
+                    );
+                }
+            }
+            DisplayMode::Mode2 => {
+                // Mode 2: BG2, BG3 = both affine
+                
+                // Clear scanline first
+                let line_start = self.scanline as usize * constants::SCREEN_WIDTH;
+                for i in 0..constants::SCREEN_WIDTH {
+                    self.framebuffer[line_start + i] = 0;
+                }
+
+                // Render BG3 first if enabled (bit 11, usually lower priority)
+                if (self.dispcnt & (1 << 11)) != 0 {
+                    let bg_size = self.bg_control[3].get_affine_size();
+                    let char_base = (self.bg_control[3].char_base as usize) * 0x4000;
+                    let screen_base = (self.bg_control[3].screen_base as usize) * 0x800;
+                    let wraparound = self.bg_control[3].wrap;
+
+                    affine::render_affine_scanline(
+                        &mut self.framebuffer,
+                        self.scanline as usize,
+                        constants::SCREEN_WIDTH,
+                        bg_size,
+                        wraparound,
+                        vram,
+                        &self.palette_ram,
+                        char_base,
+                        screen_base,
+                        &self.bg3_affine,
+                    );
+                }
+
+                // Render BG2 on top if enabled (bit 10, usually higher priority)
+                if (self.dispcnt & (1 << 10)) != 0 {
+                    let bg_size = self.bg_control[2].get_affine_size();
+                    let char_base = (self.bg_control[2].char_base as usize) * 0x4000;
+                    let screen_base = (self.bg_control[2].screen_base as usize) * 0x800;
+                    let wraparound = self.bg_control[2].wrap;
+
+                    affine::render_affine_scanline(
+                        &mut self.framebuffer,
+                        self.scanline as usize,
+                        constants::SCREEN_WIDTH,
+                        bg_size,
+                        wraparound,
+                        vram,
+                        &self.palette_ram,
+                        char_base,
+                        screen_base,
+                        &self.bg2_affine,
+                    );
+                }
             }
         }
 

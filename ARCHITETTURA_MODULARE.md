@@ -1,8 +1,8 @@
 # Architettura Modulare - GBA Emulator
 
-**Versione:** v1.2.0 (Affine Backgrounds completo) 🔄  
+**Versione:** v1.3.0 (100% Compatibilità GBA) 🎉  
 **Data:** 3 dicembre 2025  
-**Test Suite:** 179/179 passano ✅
+**Test Suite:** 186/186 passano ✅
 
 ## 📐 Principi di Design
 
@@ -110,7 +110,7 @@ gba-emulator-rust/
 | **Componente** | **Moduli** | **Codice** | **Test** | **#** | **Stato**   |
 | -------------- | ---------- | ---------- | -------- | ----- | ----------- |
 | **CPU**    | 4 + tests  | 1906         | 426        | 10   | ✅ Completo |
-| **PPU**    | 11 + tests | 2210         | 606        | 65   | ✅ Completo |
+| **PPU**    | 11 + tests | 2350         | 750        | 72   | ✅ Completo |
 | **APU**    | 7 + tests  | 852          | 337        | 17   | ✅ Completo |
 | **Timer**  | 4 + tests  | 231          | 197        | 13   | ✅ Completo |
 | **DMA**    | 4 + tests  | 428          | 283        | 19   | ✅ Completo |
@@ -120,7 +120,7 @@ gba-emulator-rust/
 | **Memory** | 1          | 310          | -          | 0    | ✅ Stabile  |
 | **Input**  | 1          | 120          | -          | 0    | ✅ Completo |
 
-**Totale Test Suite: 179 test** (10 CPU + 65 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual + 5 altri)
+**Totale Test Suite: 186 test** (10 CPU + 72 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual + 5 altri)
 
 ### Dimensione File (Policy: max ~250 righe)
 

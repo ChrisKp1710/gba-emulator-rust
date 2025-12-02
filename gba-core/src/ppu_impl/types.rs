@@ -54,4 +54,15 @@ impl BgControl {
             _ => (32, 32),
         }
     }
+
+    /// Get affine background size in pixels (for Mode 1-2)
+    pub fn get_affine_size(&self) -> usize {
+        match self.screen_size {
+            0 => 128,  // 128x128
+            1 => 256,  // 256x256
+            2 => 512,  // 512x512
+            3 => 1024, // 1024x1024
+            _ => 128,
+        }
+    }
 }

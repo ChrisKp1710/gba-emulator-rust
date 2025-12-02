@@ -1,0 +1,11 @@
+[package]
+name = "gba-arm7tdmi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+bitflags = { workspace = true, features = ["serde"] }
+thiserror.workspace = true
+serde.workspace = true

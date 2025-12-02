@@ -1,0 +1,25 @@
+# GBA Emulator Build Directory
+target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ROM files
+*.gba
+*.bin
+*.sav
+
+# Save states
+*.state
+*.sav
+
+# Logs
+*.log

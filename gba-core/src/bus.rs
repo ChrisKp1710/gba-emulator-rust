@@ -1,4 +1,5 @@
 use crate::apu::APU;
+use crate::dma::DMA;
 use crate::input::InputController;
 use crate::interrupt::InterruptController;
 use crate::memory::Memory;
@@ -12,6 +13,7 @@ pub struct Bus {
     pub ppu: PPU,
     pub apu: APU,
     pub timer: Timer,
+    pub dma: DMA,
     pub interrupt: InterruptController,
     pub input: InputController,
 }
@@ -23,6 +25,7 @@ impl Bus {
             ppu: PPU::new(),
             apu: APU::new(),
             timer: Timer::new(),
+            dma: DMA::new(),
             interrupt: InterruptController::new(),
             input: InputController::new(),
         }
@@ -208,6 +211,9 @@ impl Bus {
             // Timer registers (0x04000100-0x0400010E)
             0x04000100..=0x0400010E => self.timer.read_register(addr),
 
+            // DMA registers (0x040000B0-0x040000DE)
+            0x040000B0..=0x040000DE => self.dma.read_register(addr) as u16,
+
             _ => {
                 // Altri I/O non implementati
                 0
@@ -244,6 +250,9 @@ impl Bus {
 
             // Timer registers (0x04000100-0x0400010E)
             0x04000100..=0x0400010E => self.timer.write_register(addr, value),
+
+            // DMA registers (0x040000B0-0x040000DE)
+            0x040000B0..=0x040000DE => self.dma.write_register(addr, value as u32, true),
 
             _ => {
                 // Altri I/O non implementati

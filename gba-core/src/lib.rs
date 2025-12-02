@@ -2,6 +2,9 @@ pub mod apu;
 pub mod bus;
 pub mod cartridge;
 pub mod dma;
+mod dma_impl;
+#[cfg(test)]
+mod dma_tests;
 pub mod emulator;
 pub mod input;
 pub mod interrupt;

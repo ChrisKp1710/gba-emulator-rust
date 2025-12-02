@@ -306,13 +306,510 @@ impl ARM7TDMI {
     /// Esegui un'istruzione THUMB (16-bit)
     fn execute_thumb<M: MemoryBus>(&mut self, bus: &mut M) -> u32 {
         let pc = self.regs.pc();
-        let _instruction = bus.read_halfword(pc);
+        let instruction = bus.read_halfword(pc);
         self.regs.set_pc(pc.wrapping_add(2));
 
-        // TODO: Decode ed esecuzione istruzioni THUMB
-        // PROSSIMO STEP: Implementare decoder in thumb.rs
-        // Vedere: gba-arm7tdmi/src/thumb.rs per i formati
-        1
+        // Decodifica istruzione THUMB
+        use crate::thumb::ThumbInstruction;
+        let decoded = crate::thumb::decode_thumb(instruction);
+
+        // Esegui in base al tipo
+        match decoded {
+            ThumbInstruction::MoveShiftedRegister { op, offset, rs, rd } => {
+                let value = self.regs.r[rs as usize];
+                let result = match op {
+                    0 => value << offset, // LSL
+                    1 => {
+                        if offset == 0 {
+                            0
+                        } else {
+                            value >> offset
+                        }
+                    } // LSR
+                    2 => {
+                        // ASR
+                        if offset == 0 {
+                            if (value & 0x80000000) != 0 {
+                                0xFFFFFFFF
+                            } else {
+                                0
+                            }
+                        } else {
+                            ((value as i32) >> offset) as u32
+                        }
+                    }
+                    _ => value,
+                };
+
+                self.regs.r[rd as usize] = result;
+                self.regs.set_flag_n((result & 0x80000000) != 0);
+                self.regs.set_flag_z(result == 0);
+                if offset != 0 && op == 0 {
+                    self.regs.set_flag_c((value & (1 << (32 - offset))) != 0);
+                } else if offset != 0 {
+                    self.regs.set_flag_c((value & (1 << (offset - 1))) != 0);
+                }
+                1
+            }
+
+            ThumbInstruction::AddSubtract {
+                sub,
+                immediate,
+                rn_offset,
+                rs,
+                rd,
+            } => {
+                let rs_val = self.regs.r[rs as usize];
+                let operand = if immediate {
+                    rn_offset as u32
+                } else {
+                    self.regs.r[rn_offset as usize]
+                };
+
+                let (result, carry, overflow) = if sub {
+                    let res = rs_val.wrapping_sub(operand);
+                    let c = rs_val >= operand;
+                    let v = ((rs_val ^ operand) & (rs_val ^ res) & 0x80000000) != 0;
+                    (res, c, v)
+                } else {
+                    let res = rs_val.wrapping_add(operand);
+                    let c = (rs_val as u64 + operand as u64) > 0xFFFFFFFF;
+                    let v = ((rs_val ^ res) & (operand ^ res) & 0x80000000) != 0;
+                    (res, c, v)
+                };
+
+                self.regs.r[rd as usize] = result;
+                self.regs.set_flag_n((result & 0x80000000) != 0);
+                self.regs.set_flag_z(result == 0);
+                self.regs.set_flag_c(carry);
+                self.regs.set_flag_v(overflow);
+                1
+            }
+
+            ThumbInstruction::AluImmediate { op, rd, offset } => {
+                let imm = offset as u32;
+                let rd_val = self.regs.r[rd as usize];
+
+                match op {
+                    0 => {
+                        // MOV
+                        self.regs.r[rd as usize] = imm;
+                        self.regs.set_flag_n(false);
+                        self.regs.set_flag_z(imm == 0);
+                    }
+                    1 => {
+                        // CMP
+                        let result = rd_val.wrapping_sub(imm);
+                        self.regs.set_flag_n((result & 0x80000000) != 0);
+                        self.regs.set_flag_z(result == 0);
+                        self.regs.set_flag_c(rd_val >= imm);
+                        self.regs
+                            .set_flag_v(((rd_val ^ imm) & (rd_val ^ result) & 0x80000000) != 0);
+                    }
+                    2 => {
+                        // ADD
+                        let result = rd_val.wrapping_add(imm);
+                        self.regs.r[rd as usize] = result;
+                        self.regs.set_flag_n((result & 0x80000000) != 0);
+                        self.regs.set_flag_z(result == 0);
+                        self.regs
+                            .set_flag_c((rd_val as u64 + imm as u64) > 0xFFFFFFFF);
+                        self.regs
+                            .set_flag_v(((rd_val ^ result) & (imm ^ result) & 0x80000000) != 0);
+                    }
+                    3 => {
+                        // SUB
+                        let result = rd_val.wrapping_sub(imm);
+                        self.regs.r[rd as usize] = result;
+                        self.regs.set_flag_n((result & 0x80000000) != 0);
+                        self.regs.set_flag_z(result == 0);
+                        self.regs.set_flag_c(rd_val >= imm);
+                        self.regs
+                            .set_flag_v(((rd_val ^ imm) & (rd_val ^ result) & 0x80000000) != 0);
+                    }
+                    _ => {}
+                }
+                1
+            }
+
+            ThumbInstruction::AluOperation { op, rs, rd } => {
+                let rd_val = self.regs.r[rd as usize];
+                let rs_val = self.regs.r[rs as usize];
+
+                use crate::thumb::thumb_alu::*;
+                let result = match op {
+                    AND => rd_val & rs_val,
+                    EOR => rd_val ^ rs_val,
+                    LSL => rd_val << (rs_val & 0xFF),
+                    LSR => rd_val >> (rs_val & 0xFF),
+                    ASR => ((rd_val as i32) >> (rs_val & 0xFF)) as u32,
+                    ADC => {
+                        let c = if self.regs.flag_c() { 1 } else { 0 };
+                        rd_val.wrapping_add(rs_val).wrapping_add(c)
+                    }
+                    SBC => {
+                        let c = if self.regs.flag_c() { 0 } else { 1 };
+                        rd_val.wrapping_sub(rs_val).wrapping_sub(c)
+                    }
+                    ROR => rd_val.rotate_right(rs_val & 0xFF),
+                    TST => rd_val & rs_val,
+                    NEG => 0u32.wrapping_sub(rs_val),
+                    CMP => rd_val.wrapping_sub(rs_val),
+                    CMN => rd_val.wrapping_add(rs_val),
+                    ORR => rd_val | rs_val,
+                    MUL => rd_val.wrapping_mul(rs_val),
+                    BIC => rd_val & !rs_val,
+                    MVN => !rs_val,
+                    _ => rd_val,
+                };
+
+                // TST, CMP, CMN non scrivono risultato
+                if op != TST && op != CMP && op != CMN {
+                    self.regs.r[rd as usize] = result;
+                }
+
+                // Aggiorna flag
+                self.regs.set_flag_n((result & 0x80000000) != 0);
+                self.regs.set_flag_z(result == 0);
+
+                if op == CMP || op == CMN {
+                    if op == CMP {
+                        self.regs.set_flag_c(rd_val >= rs_val);
+                    } else {
+                        self.regs
+                            .set_flag_c((rd_val as u64 + rs_val as u64) > 0xFFFFFFFF);
+                    }
+                }
+
+                1
+            }
+
+            ThumbInstruction::HiRegisterOps { op, h1, h2, rs, rd } => {
+                let rd_idx = (rd as usize) | (if h1 { 8 } else { 0 });
+                let rs_idx = (rs as usize) | (if h2 { 8 } else { 0 });
+
+                match op {
+                    0 => {
+                        // ADD
+                        let result = self.regs.r[rd_idx].wrapping_add(self.regs.r[rs_idx]);
+                        if rd_idx == 15 {
+                            self.regs.set_pc(result & !1);
+                        } else {
+                            self.regs.r[rd_idx] = result;
+                        }
+                    }
+                    1 => {
+                        // CMP
+                        let result = self.regs.r[rd_idx].wrapping_sub(self.regs.r[rs_idx]);
+                        self.regs.set_flag_n((result & 0x80000000) != 0);
+                        self.regs.set_flag_z(result == 0);
+                        self.regs
+                            .set_flag_c(self.regs.r[rd_idx] >= self.regs.r[rs_idx]);
+                        self.regs.set_flag_v(
+                            ((self.regs.r[rd_idx] ^ self.regs.r[rs_idx])
+                                & (self.regs.r[rd_idx] ^ result)
+                                & 0x80000000)
+                                != 0,
+                        );
+                    }
+                    2 => {
+                        // MOV
+                        let value = self.regs.r[rs_idx];
+                        if rd_idx == 15 {
+                            self.regs.set_pc(value & !1);
+                        } else {
+                            self.regs.r[rd_idx] = value;
+                        }
+                    }
+                    3 => {
+                        // BX
+                        let target = self.regs.r[rs_idx];
+                        if (target & 1) != 0 {
+                            self.regs.set_pc(target & !1);
+                            self.regs.set_thumb(true);
+                        } else {
+                            self.regs.set_pc(target & !3);
+                            self.regs.set_thumb(false);
+                        }
+                        return 3;
+                    }
+                    _ => {}
+                }
+                1
+            }
+
+            ThumbInstruction::LoadPcRelative { rd, offset } => {
+                let pc = self.regs.pc() & !2;
+                let address = pc.wrapping_add((offset as u32) << 2);
+                let value = bus.read_word(address & !3);
+                self.regs.r[rd as usize] = value;
+                3
+            }
+
+            ThumbInstruction::LoadStoreRegOffset {
+                load,
+                byte,
+                ro,
+                rb,
+                rd,
+            } => {
+                let address = self.regs.r[rb as usize].wrapping_add(self.regs.r[ro as usize]);
+                if load {
+                    let value = if byte {
+                        bus.read_byte(address) as u32
+                    } else {
+                        bus.read_word(address & !3)
+                    };
+                    self.regs.r[rd as usize] = value;
+                } else {
+                    let value = self.regs.r[rd as usize];
+                    if byte {
+                        bus.write_byte(address, value as u8);
+                    } else {
+                        bus.write_word(address & !3, value);
+                    }
+                }
+                if load {
+                    3
+                } else {
+                    2
+                }
+            }
+
+            ThumbInstruction::LoadStoreImmOffset {
+                load,
+                byte,
+                offset,
+                rb,
+                rd,
+            } => {
+                let off = if byte {
+                    offset as u32
+                } else {
+                    (offset as u32) << 2
+                };
+                let address = self.regs.r[rb as usize].wrapping_add(off);
+
+                if load {
+                    let value = if byte {
+                        bus.read_byte(address) as u32
+                    } else {
+                        bus.read_word(address & !3)
+                    };
+                    self.regs.r[rd as usize] = value;
+                } else {
+                    let value = self.regs.r[rd as usize];
+                    if byte {
+                        bus.write_byte(address, value as u8);
+                    } else {
+                        bus.write_word(address & !3, value);
+                    }
+                }
+                if load {
+                    3
+                } else {
+                    2
+                }
+            }
+
+            ThumbInstruction::LoadStoreHalfword {
+                load,
+                offset,
+                rb,
+                rd,
+            } => {
+                let address = self.regs.r[rb as usize].wrapping_add((offset as u32) << 1);
+                if load {
+                    let value = bus.read_halfword(address & !1) as u32;
+                    self.regs.r[rd as usize] = value;
+                } else {
+                    bus.write_halfword(address & !1, self.regs.r[rd as usize] as u16);
+                }
+                if load {
+                    3
+                } else {
+                    2
+                }
+            }
+
+            ThumbInstruction::LoadStoreSpRelative { load, rd, offset } => {
+                let sp = self.regs.r[13];
+                let address = sp.wrapping_add((offset as u32) << 2);
+                if load {
+                    self.regs.r[rd as usize] = bus.read_word(address & !3);
+                } else {
+                    bus.write_word(address & !3, self.regs.r[rd as usize]);
+                }
+                if load {
+                    3
+                } else {
+                    2
+                }
+            }
+
+            ThumbInstruction::LoadAddress { sp, rd, offset } => {
+                let base = if sp {
+                    self.regs.r[13]
+                } else {
+                    self.regs.pc() & !2
+                };
+                self.regs.r[rd as usize] = base.wrapping_add((offset as u32) << 2);
+                1
+            }
+
+            ThumbInstruction::AddOffsetSp { sub, offset } => {
+                let off = (offset as u32) << 2;
+                if sub {
+                    self.regs.r[13] = self.regs.r[13].wrapping_sub(off);
+                } else {
+                    self.regs.r[13] = self.regs.r[13].wrapping_add(off);
+                }
+                1
+            }
+
+            ThumbInstruction::PushPop { load, r, rlist } => {
+                let mut sp = self.regs.r[13];
+                let mut cycles = 0;
+
+                if load {
+                    // POP
+                    for i in 0..8 {
+                        if (rlist & (1 << i)) != 0 {
+                            self.regs.r[i] = bus.read_word(sp);
+                            sp = sp.wrapping_add(4);
+                            cycles += 1;
+                        }
+                    }
+                    if r {
+                        let pc = bus.read_word(sp);
+                        self.regs.set_pc(pc & !1);
+                        sp = sp.wrapping_add(4);
+                        cycles += 1;
+                    }
+                } else {
+                    // PUSH
+                    if r {
+                        sp = sp.wrapping_sub(4);
+                        bus.write_word(sp, self.regs.r[14]);
+                        cycles += 1;
+                    }
+                    for i in (0..8).rev() {
+                        if (rlist & (1 << i)) != 0 {
+                            sp = sp.wrapping_sub(4);
+                            bus.write_word(sp, self.regs.r[i]);
+                            cycles += 1;
+                        }
+                    }
+                }
+
+                self.regs.r[13] = sp;
+                cycles.max(1)
+            }
+
+            ThumbInstruction::LoadStoreMultiple { load, rb, rlist } => {
+                let mut address = self.regs.r[rb as usize];
+                let mut cycles = 0;
+
+                for i in 0..8 {
+                    if (rlist & (1 << i)) != 0 {
+                        if load {
+                            self.regs.r[i] = bus.read_word(address);
+                        } else {
+                            bus.write_word(address, self.regs.r[i]);
+                        }
+                        address = address.wrapping_add(4);
+                        cycles += 1;
+                    }
+                }
+
+                self.regs.r[rb as usize] = address;
+                cycles.max(1)
+            }
+
+            ThumbInstruction::ConditionalBranch { cond, offset } => {
+                let condition = crate::arm::Condition::from_opcode((cond as u32) << 28);
+                if condition.check(self.regs.cpsr) {
+                    let pc = self.regs.pc();
+                    let offset_ext = ((offset as i32) << 1) as u32;
+                    self.regs.set_pc(pc.wrapping_add(offset_ext));
+                    return 3;
+                }
+                1
+            }
+
+            ThumbInstruction::UnconditionalBranch { offset } => {
+                let pc = self.regs.pc();
+                let offset_val = ((offset as i32) << 1) as u32;
+                self.regs.set_pc(pc.wrapping_add(offset_val));
+                3
+            }
+
+            ThumbInstruction::LongBranchLink {
+                first_instruction,
+                offset,
+            } => {
+                if first_instruction {
+                    // Prima istruzione: LR = PC + (offset << 12)
+                    let pc = self.regs.pc();
+                    let mut off = offset as i32;
+                    if off & 0x400 != 0 {
+                        off |= !0x7FF;
+                    }
+                    self.regs.r[14] = pc.wrapping_add(((off << 12) as u32));
+                } else {
+                    // Seconda istruzione: PC = LR + (offset << 1), LR = next instruction
+                    let lr = self.regs.r[14];
+                    let next_pc = self.regs.pc().wrapping_sub(2);
+                    self.regs.set_pc(lr.wrapping_add((offset as u32) << 1));
+                    self.regs.r[14] = next_pc | 1;
+                }
+                3
+            }
+
+            ThumbInstruction::SoftwareInterrupt { comment: _ } => {
+                let pc = self.regs.pc();
+                self.regs.change_mode(crate::registers::Mode::Supervisor);
+                self.regs.set_spsr(self.regs.cpsr);
+                self.regs.r[14] = pc;
+                self.regs.set_pc(0x08);
+                self.regs.set_thumb(false); // SWI handler è in ARM mode
+                3
+            }
+
+            ThumbInstruction::LoadStoreSignExtended {
+                h,
+                sign,
+                ro,
+                rb,
+                rd,
+            } => {
+                let address = self.regs.r[rb as usize].wrapping_add(self.regs.r[ro as usize]);
+                let value = if h {
+                    // Halfword
+                    let val = bus.read_halfword(address & !1);
+                    if sign && (val & 0x8000) != 0 {
+                        val as u32 | 0xFFFF0000
+                    } else {
+                        val as u32
+                    }
+                } else {
+                    // Byte
+                    let val = bus.read_byte(address);
+                    if sign && (val & 0x80) != 0 {
+                        val as u32 | 0xFFFFFF00
+                    } else {
+                        val as u32
+                    }
+                };
+                self.regs.r[rd as usize] = value;
+                3
+            }
+
+            ThumbInstruction::Undefined => {
+                // Istruzione non riconosciuta
+                1
+            }
+        }
     }
     /// Gestisci interrupt IRQ
     pub fn request_interrupt(&mut self) {
@@ -555,5 +1052,180 @@ mod tests {
         // LDR R2, [R1]
         cpu.step(&mut bus);
         assert_eq!(cpu.regs.r[2], 0x1234_5678);
+    }
+
+    #[test]
+    fn test_thumb_mov_immediate() {
+        // Test THUMB: MOV R0, #42
+        // Format 3: 001 00 rd(3) imm(8)
+        // 0010 0000 0010 1010 = 0x202A
+
+        struct TestBus {
+            instructions: Vec<u16>,
+        }
+
+        impl MemoryBus for TestBus {
+            fn read_halfword(&mut self, addr: u32) -> u16 {
+                let idx = (addr / 2) as usize;
+                if idx < self.instructions.len() {
+                    self.instructions[idx]
+                } else {
+                    0
+                }
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_word(&mut self, _: u32) -> u32 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.set_thumb(true); // Modalità THUMB
+
+        let mut bus = TestBus {
+            instructions: vec![0x202A], // MOV R0, #42
+        };
+
+        cpu.step(&mut bus);
+
+        assert_eq!(cpu.regs.r[0], 42);
+        assert_eq!(cpu.regs.flag_z(), false);
+        assert_eq!(cpu.regs.pc(), 2); // THUMB incrementa di 2
+    }
+
+    #[test]
+    fn test_thumb_add_subtract() {
+        // Test THUMB: ADD R2, R0, R1
+        // Format 2: 00011 0 0 rn(3) rs(3) rd(3)
+        // 0001 1000 0100 0010 = 0x1842
+
+        struct TestBus {
+            instructions: Vec<u16>,
+        }
+
+        impl MemoryBus for TestBus {
+            fn read_halfword(&mut self, addr: u32) -> u16 {
+                let idx = (addr / 2) as usize;
+                if idx < self.instructions.len() {
+                    self.instructions[idx]
+                } else {
+                    0
+                }
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_word(&mut self, _: u32) -> u32 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.set_thumb(true);
+        cpu.regs.r[0] = 10;
+        cpu.regs.r[1] = 20;
+
+        let mut bus = TestBus {
+            instructions: vec![0x1842], // ADD R2, R0, R1
+        };
+
+        cpu.step(&mut bus);
+
+        assert_eq!(cpu.regs.r[2], 30);
+        assert_eq!(cpu.regs.flag_z(), false);
+        assert_eq!(cpu.regs.flag_n(), false);
+    }
+
+    #[test]
+    fn test_thumb_ldr_str() {
+        // Test THUMB: STR R0, [R1, #4] e LDR R2, [R1, #4]
+        use std::collections::HashMap;
+
+        struct MemBus {
+            memory: HashMap<u32, u32>,
+            instructions: Vec<u16>,
+        }
+
+        impl MemoryBus for MemBus {
+            fn read_halfword(&mut self, addr: u32) -> u16 {
+                if addr < (self.instructions.len() * 2) as u32 {
+                    self.instructions[(addr / 2) as usize]
+                } else {
+                    0
+                }
+            }
+            fn read_word(&mut self, addr: u32) -> u32 {
+                *self.memory.get(&(addr & !3)).unwrap_or(&0)
+            }
+            fn write_word(&mut self, addr: u32, value: u32) {
+                self.memory.insert(addr & !3, value);
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.set_thumb(true);
+        cpu.regs.r[0] = 0xABCD_1234;
+        cpu.regs.r[1] = 0x0300_0000;
+
+        let mut bus = MemBus {
+            memory: HashMap::new(),
+            instructions: vec![
+                0x6048, // STR R0, [R1, #4]
+                0x684A, // LDR R2, [R1, #4]
+            ],
+        };
+
+        // STR
+        cpu.step(&mut bus);
+        assert_eq!(bus.memory.get(&0x0300_0004), Some(&0xABCD_1234));
+
+        // LDR
+        cpu.step(&mut bus);
+        assert_eq!(cpu.regs.r[2], 0xABCD_1234);
+    }
+
+    #[test]
+    fn test_thumb_branch() {
+        // Test THUMB: B #4 (offset 2 = salta 2 halfwords = 4 byte)
+        // Format 18: 11100 offset(11)
+        // 1110 0000 0000 0010 = 0xE002
+
+        struct TestBus;
+        impl MemoryBus for TestBus {
+            fn read_halfword(&mut self, _: u32) -> u16 {
+                0xE002 // B #+4
+            }
+            fn read_byte(&mut self, _: u32) -> u8 {
+                0
+            }
+            fn read_word(&mut self, _: u32) -> u32 {
+                0
+            }
+            fn write_byte(&mut self, _: u32, _: u8) {}
+            fn write_halfword(&mut self, _: u32, _: u16) {}
+            fn write_word(&mut self, _: u32, _: u32) {}
+        }
+
+        let mut cpu = ARM7TDMI::new();
+        cpu.regs.set_thumb(true);
+        let mut bus = TestBus;
+
+        cpu.step(&mut bus);
+
+        // PC dopo step = 2, branch offset 2*2 = 4, quindi PC finale = 2+4 = 6
+        assert_eq!(cpu.regs.pc(), 6);
     }
 }

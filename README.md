@@ -14,27 +14,56 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - Tutti i 19 formati THUMB implementati
   - Switch ARM↔THUMB funzionante
   - Condition codes, barrel shifter, flag NZCV
+  - **Architettura modulare**: test separati in `cpu_tests.rs`
   - **10 test unitari** che verificano correttezza ✅
   - **Codice professionale**: 0 warning Clippy ✅
-- **✅ PPU Mode 3 Funzionante**
-  - Rendering bitmap RGB555 240x160 pixel
-  - I/O registers: DISPCNT, DISPSTAT, VCOUNT
-  - VBlank interrupt integrato
-  - **4 test unitari** per rendering (pixel, gradiente, barre colorate) ✅
-- **✅ PPU Mode 0 Completo**
-  - **4 background layers (BG0-BG3)** con tile 8x8
-  - **Palette RAM** (1KB): 16 colori e 256 colori
-  - **BG Control** (BGxCNT): priority, char/screen base, palette mode
-  - **BG Scrolling** (BGxHOFS/VOFS) per tutti i layer
-  - **Layer compositing** con priority e trasparenza
-  - **7 test unitari** per tile rendering, scrolling, priority ✅
-- **✅ Sprite Rendering (OAM) Completo** ✨ NUOVO
-  - **128 sprite** (OAM 1KB)
-  - **Tutte le dimensioni**: 8x8, 16x16, 32x32, 64x64, wide, tall
-  - **OBJ palette** (512 byte): 16 e 256 colori
-  - **H-flip/V-flip**, priority, trasparenza
-  - **VRAM OBJ** tile rendering (0x06010000+)
-  - **5 test unitari** per sprite rendering ✅
+- **✅ PPU (Picture Processing Unit) Completa** 🎨
+
+  - **Architettura modulare**: 6 moduli (`ppu_impl/`) + test separati
+  - **Mode 0 - Tile Backgrounds**
+    - 4 background layers (BG0-BG3) con tile 8x8
+    - Palette RAM (1KB): 16 e 256 colori
+    - BG Control (BGxCNT): priority, char/screen base, palette mode
+    - BG Scrolling (BGxHOFS/VOFS) per tutti i layer
+    - Layer compositing con priority e trasparenza
+  - **Mode 3 - Bitmap**
+    - Rendering RGB555 240x160 pixel
+    - I/O registers: DISPCNT, DISPSTAT, VCOUNT
+    - VBlank interrupt integrato
+  - **Sprite Rendering (OAM)**
+    - 128 sprite con OAM 1KB
+    - Tutte le dimensioni: 8x8, 16x16, 32x32, 64x64, wide, tall
+    - OBJ palette (512 byte): 16 e 256 colori
+    - H-flip/V-flip, priority, trasparenza
+    - VRAM OBJ tile rendering (0x06010000+)
+  - **12 test unitari** per PPU rendering completo ✅
+
+- **✅ APU (Audio Processing Unit) Completa** 🔊
+
+  - **Architettura modulare**: 7 moduli (`apu_impl/`) + test separati
+  - **GB Sound Channels**
+    - Square wave 1-2 con sweep e duty cycle
+    - Wave RAM channel con forme d'onda custom
+    - Noise channel con LFSR
+  - **Direct Sound**
+    - DMA Audio A/B con FIFO 32 byte
+    - Mixing 8-bit signed PCM
+  - **Master Control**
+    - GB channel mixer, volume, enable/disable
+    - Direct Sound control e output
+  - **17 test unitari** per APU completo ✅
+
+- **✅ Timer System Completo** ⏱️ **NUOVO**
+
+  - **Architettura modulare**: 4 moduli (`timer_impl/`) + test separati
+  - **4 Hardware Timers (TM0-TM3)**
+    - Prescaler: 1, 64, 256, 1024 CPU cycles
+    - Counter 16-bit con reload automatico
+    - IRQ su overflow configurabile
+    - Cascade mode (timer chaining)
+  - **Memory-mapped I/O**: `0x04000100-0x0400010E`
+  - **13 test unitari** per tutti i timer features ✅
+
 - **✅ Input Controller Completo**
   - KEYINPUT register (0x04000130)
   - D-Pad, A/B, L/R, Start/Select
@@ -44,19 +73,26 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 - **✅ Caricamento ROM** - Supporto completo con parsing header
 - **✅ Frontend SDL2** - Interfaccia grafica 60 FPS con conversione RGB555→RGB888
 - **✅ Ottimizzazione Massima** - LTO fat, single codegen unit, strip
-- **✅ Codice Professionale** - 0 warning Clippy, best practices Rust
+- **✅ Architettura Professionale**
+  - Codice modulare: ogni componente in moduli separati
+  - Test sempre separati in `_tests.rs` files
+  - 0 warning Clippy strict mode
+  - Best practices Rust
 
 ### 🚧 In Sviluppo
 
 - **PPU Advanced Features**
   - Mode 1-2 (affine backgrounds)
   - Mode 4-5 (bitmap paletted)
-  - **Sprite rendering (OAM)** - Oggetti e personaggi
   - Window effects
   - Blending avanzato (alpha, brightness)
-- **Audio (APU)** - Sistema audio completo
-- **Save States** - Salvataggio/caricamento stato
-- **Supporto Salvataggi** - SRAM, Flash, EEPROM
+
+### 📋 Pianificato
+
+- **DMA Controller** - Direct Memory Access per trasferimenti veloci
+- **Save States** - Salvataggio/caricamento stato emulatore
+- **Supporto Salvataggi** - SRAM, Flash, EEPROM per giochi
+- **Ottimizzazioni Avanzate** - JIT compilation, SIMD
 
 ## 🏗️ Architettura
 
@@ -64,11 +100,32 @@ Il progetto è strutturato in crate separati per modularità e riusabilità:
 
 ```
 gba-emulator-rust/
-├── gba-core/           # Core dell'emulatore (bus, memoria, PPU, APU)
-├── gba-arm7tdmi/       # Emulatore CPU ARM7TDMI
-├── gba-frontend-sdl2/  # Frontend desktop con SDL2
+├── gba-core/           # Core dell'emulatore
+│   ├── src/
+│   │   ├── ppu_impl/   # PPU modularizzata (6 moduli)
+│   │   ├── apu_impl/   # APU modularizzata (7 moduli)
+│   │   ├── timer_impl/ # Timer modularizzato (4 moduli)
+│   │   ├── ppu.rs      # Re-export PPU
+│   │   ├── apu.rs      # Re-export APU
+│   │   ├── timer.rs    # Re-export Timer
+│   │   ├── bus.rs      # System bus e I/O mapping
+│   │   ├── memory.rs   # Memory management
+│   │   └── ...
+│   └── tests/          # Integration tests
+├── gba-arm7tdmi/       # CPU ARM7TDMI
+│   ├── src/
+│   │   ├── cpu.rs      # Core CPU (781 lines)
+│   │   └── cpu_tests.rs # Test separati (426 lines)
+├── gba-frontend-sdl2/  # Frontend desktop SDL2
 └── Cargo.toml          # Workspace configuration
 ```
+
+### 🎯 Principi Architetturali
+
+1. **Modularità**: Ogni componente è suddiviso in moduli piccoli e focalizzati (~20-250 righe)
+2. **Test Separati**: Tutti i test sono in file `_tests.rs` dedicati
+3. **Zero Warnings**: Clippy strict mode, 0 warning policy
+4. **Best Practices**: Rust idiomatico, documentazione, type safety
 
 > 📘 **Per capire in dettaglio l'architettura e come modificare il codice:**
 > Leggi [GUIDA_ARCHITETTURA.md](GUIDA_ARCHITETTURA.md) - Spiega step-by-step ogni componente!
@@ -164,53 +221,67 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ Tutte le istruzioni ARM (40+)
    - ✅ Tutte le istruzioni THUMB (100+ varianti)
    - ✅ Pipeline CPU e switch ARM↔THUMB
+   - ✅ Test separati in cpu_tests.rs
    - ✅ 10 test unitari passano
-2. **PPU Mode 3 funzionante**
-   - ✅ Rendering bitmap RGB555 240x160
-   - ✅ I/O registers (DISPCNT, DISPSTAT, VCOUNT)
-   - ✅ VBlank interrupt
-   - ✅ 4 test unitari per rendering
-3. **Input controller completo**
+2. **PPU (Picture Processing Unit) completa** 🎨
+   - ✅ Architettura modulare (6 moduli in ppu_impl/)
+   - ✅ Mode 0 (tile backgrounds) - 4 layers
+   - ✅ Mode 3 (bitmap RGB555)
+   - ✅ Sprite rendering (OAM) - 128 sprite
+   - ✅ Palette RAM e scrolling
+   - ✅ Test separati: 12 test unitari
+3. **APU (Audio Processing Unit) completa** 🔊
+   - ✅ Architettura modulare (7 moduli in apu_impl/)
+   - ✅ 4 GB sound channels (Square, Wave, Noise)
+   - ✅ Direct Sound (DMA Audio A/B)
+   - ✅ Mixer e master control
+   - ✅ Test separati: 17 test unitari
+4. **Timer System completo** ⏱️
+   - ✅ Architettura modulare (4 moduli in timer_impl/)
+   - ✅ 4 hardware timers (TM0-TM3)
+   - ✅ Prescaler, cascade mode, IRQ
+   - ✅ Test separati: 13 test unitari
+5. **Input controller completo**
    - ✅ KEYINPUT register
    - ✅ D-Pad + A/B/L/R/Start/Select
    - ✅ SDL2 integration
-4. Struttura del progetto modulare
-5. Sistema memoria e bus completo
-6. Caricamento ROM e parsing header
-7. Frontend SDL2 con conversione RGB555→RGB888
-8. Sistema interrupt completo
+6. **Sistema base completo**
+   - ✅ Memoria e bus
+   - ✅ Interrupt controller
+   - ✅ Caricamento ROM
+   - ✅ Frontend SDL2
 
 ### 🚧 In Corso
 
-1. PPU (Picture Processing Unit) avanzata
-   - [ ] Background rendering (Mode 0 tile-based)
-   - [ ] Sprite rendering (OAM)
-   - [ ] Modalità bitmap Mode 1-2
-   - [ ] Effects (blending, mosaic)
+- **PPU Advanced Features**
+  - [ ] Mode 1-2 (affine backgrounds)
+  - [ ] Mode 4-5 (bitmap paletted)
+  - [ ] Window effects
+  - [ ] Blending avanzato (alpha, brightness)
 
 ### 📋 Pianificato
 
-1. APU (Audio Processing Unit)
+1. **DMA Controller**
 
-   - [ ] Channel 1-4 (GB compatibili)
-   - [ ] DMA audio channels
-   - [ ] Audio mixing
+   - [ ] 4 DMA channels
+   - [ ] Source/destination control
+   - [ ] Transfer modes
+   - [ ] Timing triggers
 
-2. Periferiche Hardware
+2. **Periferiche Avanzate**
 
-   - [ ] Timer hardware
-   - [ ] DMA controller
+   - [ ] Serial communication
+   - [ ] RTC (Real Time Clock)
+   - [ ] GPIO per accessori
 
-3. Salvataggi
-
-4. Salvataggi
+3. **Salvataggi**
 
    - [ ] Save States
    - [ ] SRAM
    - [ ] Flash
    - [ ] EEPROM
 
-5. Ottimizzazioni Avanzate
+4. **Ottimizzazioni**
    - [ ] JIT compilation (opzionale)
    - [ ] SIMD optimizations
    - [ ] Multi-threading
@@ -227,22 +298,28 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test (26 test totali)
-cargo test
+# Run tutti i test (56 test totali)
+cargo test --workspace
 
 # Test CPU ARM7TDMI (10 test unitari)
 cargo test --package gba-arm7tdmi
 
-# Test PPU (12 test unitari: Mode 0 + Sprites)
+# Test PPU (12 test unitari)
 cargo test --package gba-core ppu
 
-# Test integrazione (4 test unitari)
-cargo test --package gba-core --test integration_tests
+# Test APU (17 test unitari)
+cargo test --package gba-core apu
+
+# Test Timer (13 test unitari)
+cargo test --package gba-core timer
+
+# Test integrazione (4 test)
+cargo test --package gba-core --test
 ```
 
-### Test Suite - 26/26 Passano ✅
+### Test Suite - 56/56 Passano ✅
 
-**CPU ARM7TDMI (10 test):**
+**CPU ARM7TDMI (10 test)** - `cpu_tests.rs`
 
 - ✅ `test_mov_instruction` - MOV con immediato
 - ✅ `test_add_instruction` - ADD tra registri
@@ -254,7 +331,7 @@ cargo test --package gba-core --test integration_tests
 - ✅ `test_thumb_ldr_str` - THUMB LDR/STR con offset
 - ✅ `test_thumb_branch` - THUMB Branch incondizionale
 
-**PPU Rendering (12 test):**
+**PPU Rendering (12 test)** - `ppu.rs`
 
 _Mode 0 - Tile Backgrounds (7 test):_
 
@@ -274,16 +351,68 @@ _Sprite Rendering (5 test):_
 - ✅ `test_sprite_rendering_simple` - Rendering sprite 8x8
 - ✅ `test_sprite_transparency` - Trasparenza sprite (color 0)
 
-**Integrazione (4 test):**
+**APU Audio (17 test)** - `apu_tests.rs`
 
-- ✅ `test_load_rom` - Caricamento ROM in memoria
-- ✅ `test_basic_execution` - Esecuzione istruzioni base
-- ✅ `test_interrupt_handling` - Gestione interrupts
-- ✅ `test_memory_mirroring` - Mirroring BIOS/WRAM
+_Channels (9 test):_
 
-Tutti i test passano con 0 warning Clippy strict mode.
+- ✅ `test_square_channel_creation` - Square channel init
+- ✅ `test_duty_cycle` - Duty cycle 12.5%, 25%, 50%, 75%
+- ✅ `test_trigger` - Square trigger e reset
+- ✅ `test_wave_ram_access` - Wave RAM read/write
+- ✅ `test_wave_trigger` - Wave trigger
+- ✅ `test_noise_creation` - Noise channel init
+- ✅ `test_noise_trigger` - Noise trigger e LFSR
 
-```
+_Direct Sound (3 test):_
+
+- ✅ `test_fifo_write_read` - FIFO buffer operations
+- ✅ `test_fifo_reset` - FIFO clear
+- ✅ `test_fifo_wraparound` - FIFO circular buffer
+
+_System (5 test):_
+
+- ✅ `test_apu_creation` - APU initialization
+- ✅ `test_master_enable` - Master enable/disable
+- ✅ `test_register_routing` - Register mapping
+- ✅ `test_gb_volume` - GB volume control
+- ✅ `test_mixer_silence` - Mixer output
+
+**Timer System (13 test)** - `timer_tests.rs`
+
+_Core Features (7 test):_
+
+- ✅ `test_timer_creation` - Timer initialization
+- ✅ `test_timer_control_register` - Control register parsing
+- ✅ `test_timer_reload` - Reload value handling
+- ✅ `test_timer_counting` - Basic counting
+- ✅ `test_timer_overflow` - Overflow e reload
+- ✅ `test_timer_overflow_irq` - IRQ su overflow
+- ✅ `test_timer_disabled_no_count` - Timer disabilitato
+
+_Prescaler (4 test):_
+
+- ✅ `test_prescaler_64` - Prescaler 64 cycles
+- ✅ `test_prescaler_256` - Prescaler 256 cycles
+- ✅ `test_prescaler_1024` - Prescaler 1024 cycles
+
+_Advanced (2 test):_
+
+- ✅ `test_cascade_mode` - Timer chaining
+- ✅ `test_all_timers` - Tutti e 4 i timer
+- ✅ `test_timer_enable_reloads` - Enable behavior
+
+**Integrazione (4 test)** - `tests/`
+
+- ✅ `test_mode3_rendering` - PPU Mode 3 bitmap
+- ✅ `test_mode3_full_scanline` - Scanline completa
+- ✅ `test_demo_color_gradient` - Demo gradiente
+- ✅ `test_demo_color_bars` - Demo barre colorate
+
+**Qualità del codice:**
+
+- ✅ 0 warning Clippy strict mode (`-D warnings`)
+- ✅ Tutti i test passano
+- ✅ Codice modulare e documentato
 
 ## 📊 Performance
 
@@ -331,4 +460,7 @@ Progetti di riferimento che hanno ispirato questo emulatore:
 ## 📧 Contatti
 
 Per domande, suggerimenti o bug report, apri una issue su GitHub.
+
+```
+
 ```

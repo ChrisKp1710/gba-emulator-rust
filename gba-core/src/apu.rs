@@ -1,16 +1,7 @@
-// APU - Audio Processing Unit placeholder
-pub struct APU {
-    // TODO: Implementazione audio
-}
+// APU - Audio Processing Unit
+// Struttura modulare con sotto-moduli separati
 
-impl APU {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+#[path = "apu_impl/mod.rs"]
+mod apu_impl;
 
-impl Default for APU {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub use apu_impl::APU;

@@ -1,3 +1,4 @@
+use crate::apu::APU;
 use crate::input::InputController;
 use crate::interrupt::InterruptController;
 use crate::memory::Memory;
@@ -8,6 +9,7 @@ use gba_arm7tdmi::cpu::MemoryBus;
 pub struct Bus {
     pub memory: Memory,
     pub ppu: PPU,
+    pub apu: APU,
     pub interrupt: InterruptController,
     pub input: InputController,
 }
@@ -17,6 +19,7 @@ impl Bus {
         Self {
             memory: Memory::new(),
             ppu: PPU::new(),
+            apu: APU::new(),
             interrupt: InterruptController::new(),
             input: InputController::new(),
         }
@@ -196,6 +199,9 @@ impl Bus {
             // Input
             0x04000130 => self.input.read_keyinput(), // KEYINPUT
 
+            // APU registers (0x04000060-0x040000AE)
+            0x04000060..=0x040000AE => self.apu.read_halfword(addr),
+
             _ => {
                 // Altri I/O non implementati
                 0
@@ -226,6 +232,9 @@ impl Bus {
             0x04000200 => self.interrupt.ie = value,
             0x04000202 => self.interrupt.if_ = value,
             0x04000208 => self.interrupt.ime = (value & 0x01) != 0,
+
+            // APU registers (0x04000060-0x040000AE)
+            0x04000060..=0x040000AE => self.apu.write_halfword(addr, value),
 
             _ => {
                 // Altri I/O non implementati

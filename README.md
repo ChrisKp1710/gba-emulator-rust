@@ -19,7 +19,7 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
   - **Codice professionale**: 0 warning Clippy ✅
 - **✅ PPU (Picture Processing Unit) Completa** 🎨
 
-  - **Architettura modulare**: 10 moduli (`ppu_impl/`) + test separati
+  - **Architettura modulare**: 11 moduli (`ppu_impl/`) + test separati
   - **Mode 0 - Tile Backgrounds**
     - 4 background layers (BG0-BG3) con tile 8x8
     - Palette RAM (1KB): 16 e 256 colori
@@ -40,14 +40,22 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - Risoluzione 160x128 pixel (centrato su 240x160)
     - Page flipping (2 frame buffer)
     - Bordi neri automatici per centering
-  - **Windows System** 🪟 **NUOVO**
+  - **Affine Backgrounds** 🔄 **NUOVO**
+    - Trasformazioni affini per BG2/BG3 (Mode 1-2)
+    - Matrice 2×2: rotazione, scaling, shearing (PA/PB/PC/PD in 8.8 fixed-point)
+    - Reference point (X/Y in 20.8 fixed-point)
+    - Wraparound mode: tiling automatico
+    - Clipping mode: out-of-bounds = transparent
+    - Background sizes: 128x128, 256x256, 512x512, 1024x1024
+    - Tile-based 8-bit paletted rendering
+  - **Windows System** 🪟
     - WIN0/WIN1: Finestre rettangolari configurabili
     - WINOBJ: Window da sprite (OBJ window)
     - WINOUT: Controllo area fuori finestre
     - Priority: WIN0 > WIN1 > WINOBJ > WINOUT
     - Horizontal/vertical wrapping support
     - Per-window layer enable (BG0-3, OBJ, Blending)
-  - **Blending & Effects** ✨ **NUOVO**
+  - **Blending & Effects** ✨
     - Alpha blending: Blend tra due layer (EVA/EVB coefficients)
     - Brightness increase: Fade to white (EVY coefficient)
     - Brightness decrease: Fade to black (EVY coefficient)
@@ -59,7 +67,7 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
     - OBJ palette (512 byte): 16 e 256 colori
     - H-flip/V-flip, priority, trasparenza
     - VRAM OBJ tile rendering (0x06010000+)
-  - **50 test unitari** per PPU completo ✅
+  - **65 test unitari** per PPU completo ✅
 
 - **✅ APU (Audio Processing Unit) Completa** 🔊
 
@@ -159,17 +167,12 @@ Un emulatore Game Boy Advance ad alte prestazioni scritto in Rust, ottimizzato p
 
 ### 🚧 In Sviluppo
 
-- **PPU Advanced Features**
-  - Mode 1-2 (affine backgrounds)
-  - Mode 4-5 (bitmap paletted) - **IN PIANIFICAZIONE** 🎯
-  - Window effects
-  - Blending avanzato (alpha, brightness)
+- **Rendering Avanzato**
+  - Integrazione affine rendering in Mode 1-2
+  - Ottimizzazioni performance per trasformazioni
 
 ### 📋 Pianificato
 
-- **PPU Mode 4/5** - Modi bitmap paletted (240x160 256 colori, 160x128 16-bit)
-- **Windows & Blending** - WIN0/WIN1/OBJ/OUT, alpha, brightness
-- **Affine Backgrounds** - BG2/BG3 con rotazione/scaling
 - **Save States** - Salvataggio/caricamento stato emulatore completo
 - **Ottimizzazioni Avanzate** - JIT compilation, SIMD
 
@@ -181,7 +184,7 @@ Il progetto è strutturato in crate separati per modularità e riusabilità:
 gba-emulator-rust/
 ├── gba-core/           # Core dell'emulatore
 │   ├── src/
-│   │   ├── ppu_impl/   # PPU modularizzata (8 moduli)
+│   │   ├── ppu_impl/   # PPU modularizzata (11 moduli)
 │   │   ├── apu_impl/   # APU modularizzata (7 moduli)
 │   │   ├── timer_impl/ # Timer modularizzato (4 moduli)
 │   │   ├── dma_impl/   # DMA modularizzato (4 moduli)
@@ -309,12 +312,17 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ Test separati in cpu_tests.rs
    - ✅ 10 test unitari passano
 2. **PPU (Picture Processing Unit) completa** 🎨
-   - ✅ Architettura modulare (6 moduli in ppu_impl/)
+   - ✅ Architettura modulare (11 moduli in ppu_impl/)
    - ✅ Mode 0 (tile backgrounds) - 4 layers
    - ✅ Mode 3 (bitmap RGB555)
+   - ✅ Mode 4 (bitmap paletted 8-bit)
+   - ✅ Mode 5 (bitmap RGB small 160x128)
+   - ✅ Affine backgrounds (BG2/BG3 rotation/scaling)
+   - ✅ Windows (WIN0/WIN1/WINOBJ/WINOUT)
+   - ✅ Blending (alpha, brightness +/-)
    - ✅ Sprite rendering (OAM) - 128 sprite
    - ✅ Palette RAM e scrolling
-   - ✅ Test separati: 12 test unitari
+   - ✅ Test separati: 65 test unitari
 3. **APU (Audio Processing Unit) completa** 🔊
    - ✅ Architettura modulare (7 moduli in apu_impl/)
    - ✅ 4 GB sound channels (Square, Wave, Noise)
@@ -356,32 +364,27 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
    - ✅ Caricamento ROM
    - ✅ Frontend SDL2
 
+**Totale: 179 test unitari ✅**
+
 ### 🚧 In Corso
 
-- **PPU Mode 4/5 - Bitmap Paletted** 🎯 **PROSSIMO**
-  - [ ] Mode 4: 256 colori paletted (240x160)
-  - [ ] Mode 5: 16-bit RGB (160x128)
-  - [ ] Frame flipping per double buffering
+- **Rendering Integration**
+  - [ ] Affine rendering in Mode 1-2
+  - [ ] Performance optimizations
 
 ### 📋 Pianificato
 
-1. **PPU Advanced Features**
-
-   - [ ] Mode 1-2 (affine backgrounds)
-   - [ ] Window effects (WIN0/WIN1/OBJ/OUT)
-   - [ ] Blending avanzato (alpha, brightness)
-
-2. **Periferiche Avanzate**
+1. **Periferiche Avanzate**
 
    - [ ] Serial communication
    - [ ] RTC (Real Time Clock)
    - [ ] GPIO per accessori
 
-3. **Altri Features**
+2. **Altri Features**
 
    - [ ] Save States
 
-4. **Ottimizzazioni**
+3. **Ottimizzazioni**
    - [ ] JIT compilation (opzionale)
    - [ ] SIMD optimizations
    - [ ] Multi-threading
@@ -398,13 +401,13 @@ gba-emulator.exe pokemon_emerald.gba --bios gba_bios.bin
 Il progetto include una suite di test completa per garantire correttezza:
 
 ```powershell
-# Run tutti i test (96 test totali)
+# Run tutti i test (179 test totali)
 cargo test --workspace
 
 # Test CPU ARM7TDMI (10 test unitari)
 cargo test --package gba-arm7tdmi
 
-# Test PPU (12 test unitari)
+# Test PPU (65 test unitari)
 cargo test --package gba-core ppu
 
 # Test APU (17 test unitari)

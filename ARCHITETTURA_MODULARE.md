@@ -1,14 +1,14 @@
 # Architettura Modulare - GBA Emulator
 
-**Versione:** v1.1.0 (Windows & Blending completo) ✨  
+**Versione:** v1.2.0 (Affine Backgrounds completo) 🔄  
 **Data:** 3 dicembre 2025  
-**Test Suite:** 166/166 passano ✅
+**Test Suite:** 179/179 passano ✅
 
 ## 📐 Principi di Design
 
 Il progetto segue questi principi fondamentali:
 
-1. **Modularità**: Ogni componente è suddiviso in moduli piccoli (~20-250 righe)
+1. **Modularità**: Ogni componente è suddiviso in moduli piccoli (~20-350 righe)
 2. **Test Separati**: Tutti i test sono in file `_tests.rs` dedicati
 3. **Zero Warnings**: Clippy strict mode (`-D warnings`)
 4. **Best Practices**: Rust idiomatico, documentazione completa
@@ -29,16 +29,17 @@ gba-emulator-rust/
 ├── gba-core/              # Sistema GBA
 │   ├── src/
 │   │   ├── ppu_impl/      # PPU modularizzata
-│   │   │   ├── constants.rs   # (52 lines) - Memory map, registri
+│   │   │   ├── constants.rs   # (71 lines) - Memory map, registri
 │   │   │   ├── types.rs       # (53 lines) - BgControl, DisplayMode
 │   │   │   ├── sprites.rs     # (224 lines) - Sprite rendering
 │   │   │   ├── mode0.rs       # (173 lines) - Tile backgrounds
 │   │   │   ├── mode3.rs       # (20 lines) - Bitmap RGB
 │   │   │   ├── mode4.rs       # (156 lines) - Bitmap paletted
 │   │   │   ├── mode5.rs       # (188 lines) - Bitmap RGB small
+│   │   │   ├── affine.rs      # (348 lines) - Affine transformations
 │   │   │   ├── windows.rs     # (265 lines) - Window system
-│   │   │   ├── blending.rs    # (320 lines) - Alpha/brightness effects
-│   │   │   └── mod.rs         # (354 lines) - PPU struct principale
+│   │   │   ├── blending.rs    # (317 lines) - Alpha/brightness effects
+│   │   │   └── mod.rs         # (395 lines) - PPU struct principale
 │   │   │
 │   │   ├── apu_impl/      # APU modularizzata
 │   │   │   ├── constants.rs   # (26 lines) - Registri audio
@@ -106,13 +107,20 @@ gba-emulator-rust/
 | **APU**    | 7 + tests  | 952          | separati   | 17   | ✅ Completo |
 | **Timer**  | 4 + tests  | 231          | 194        | 13   | ✅ Completo |
 | **DMA**    | 4 + tests  | 383          | 300        | 19   | ✅ Completo |
+| **Componente** | **Moduli** | **Codice** | **Test** | **#** | **Stato**   |
+| -------------- | ---------- | ---------- | -------- | ----- | ----------- |
+| **CPU**    | 4 + tests  | 1906         | 426        | 10   | ✅ Completo |
+| **PPU**    | 11 + tests | 2210         | 606        | 65   | ✅ Completo |
+| **APU**    | 7 + tests  | 852          | 337        | 17   | ✅ Completo |
+| **Timer**  | 4 + tests  | 231          | 197        | 13   | ✅ Completo |
+| **DMA**    | 4 + tests  | 428          | 283        | 19   | ✅ Completo |
 | **BIOS**   | 3 + tests  | 337          | 167        | 21   | ✅ Completo |
 | **Save**   | 6 + tests  | 858          | 283        | 23   | ✅ Completo |
 | **Bus**    | 1          | 290          | -          | 0    | ✅ Stabile  |
 | **Memory** | 1          | 310          | -          | 0    | ✅ Stabile  |
 | **Input**  | 1          | 120          | -          | 0    | ✅ Completo |
 
-**Totale Test Suite: 166 test** (10 CPU + 50 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual + 7 altri)
+**Totale Test Suite: 179 test** (10 CPU + 65 PPU + 17 APU + 13 Timer + 19 DMA + 21 BIOS + 23 Save + 4 integration + 2 visual + 5 altri)
 
 ### Dimensione File (Policy: max ~250 righe)
 
@@ -126,7 +134,7 @@ gba-emulator-rust/
 
 **File Moderni (modulari):**
 
-- PPU: 10 moduli da 20-354 righe ✅ (Windows & Blending aggiunti)
+- PPU: 11 moduli da 20-395 righe ✅ (Affine Backgrounds aggiunto)
 - APU: 7 moduli da 14-216 righe ✅
 - Timer: 4 moduli da 18-90 righe ✅
 - DMA: 4 moduli da 34-171 righe ✅
@@ -135,11 +143,10 @@ gba-emulator-rust/
 
 **File Eccezionali (>250 righe, giustificati):**
 
-- `ppu/mod.rs`: 354 righe (coordinator principale con registri I/O)
-- `ppu/blending.rs`: 320 righe (alpha blend + brightness + test)
+- `ppu/mod.rs`: 395 righe (coordinator principale con registri I/O + affine)
+- `ppu/affine.rs`: 348 righe (trasformazioni affini + 15 test)
+- `ppu/blending.rs`: 317 righe (alpha blend + brightness + test)
 - `ppu/windows.rs`: 265 righe (4 window system + priority + test)
-- DMA: 4 moduli da 34-171 righe ✅
-- BIOS: 3 moduli da 39-209 righe ✅
 
 ## 🎯 Pattern Architetturali
 
